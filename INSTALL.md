@@ -1,15 +1,16 @@
-# Android Hello World Installation Guide
+# MTG Deck to Oracle Installation Guide
 
-This guide describes how to build and install this "Hello World" app on your Pixel phone (or any Android device).
+This guide describes how to build and install the **MTG Deck to Oracle** utility on your Android device.
 
 ## Prerequisites
 
-1.  **Android Studio:** [Download and install](https://developer.android.com/studio) the latest version. This will install the Android SDK and Gradle.
-2.  **USB Cable:** To connect your Pixel to your computer.
+1.  **Android Studio:** [Download and install](https://developer.android.com/studio) the latest version.
+2.  **Internet Connection:** Required for downloading Gradle dependencies and fetching card data from Scryfall.
+3.  **USB Cable:** To connect your Pixel to your computer.
 
-## Step 1: Prepare your Pixel Phone
+## Step 1: Prepare your Android Device
 
-1.  Open **Settings** on your Pixel.
+1.  Open **Settings** on your phone.
 2.  Go to **About phone**.
 3.  Scroll to the bottom and tap **Build number** 7 times until you see "You are now a developer!".
 4.  Go back to **Settings > System > Developer options**.
@@ -19,33 +20,18 @@ This guide describes how to build and install this "Hello World" app on your Pix
 
 1.  Launch **Android Studio**.
 2.  Select **Open** and choose the `/Users/yiwei/code/mtg-llm-plugin` directory.
-3.  Wait for Gradle to sync. If prompted to install missing SDK platforms or build tools, click the links to do so.
-4.  If `local.properties` is missing, Android Studio should create it for you automatically. If not, create a file named `local.properties` in the root directory and add:
-    ```properties
-    sdk.dir=/Users/YOUR_USER/Library/Android/sdk
-    ```
-    *(Replace with your actual SDK path, usually shown in Android Studio Settings > Languages & Frameworks > Android SDK)*
+3.  Wait for Gradle to sync. This may take a few minutes as it downloads Room, Retrofit, and other dependencies.
 
 ## Step 3: Build and Install
 
-### Method A: Using Android Studio (Recommended)
-
-1.  Connect your Pixel to your computer via USB.
-2.  In the toolbar, select your Pixel device from the target device dropdown.
+1.  Connect your phone to your computer via USB.
+2.  In the toolbar, select your device from the target device dropdown.
 3.  Click the **Run** button (green play icon).
-4.  The app will build and automatically launch on your phone.
+4.  The app will build and install on your phone.
 
-### Method B: Using Command Line (Terminal)
+## How to Test
 
-1.  Open Terminal in the project root.
-2.  If you don't have a Gradle wrapper, you might need to install `gradle` via Homebrew: `brew install gradle`.
-3.  Run the build command:
-    ```bash
-    ./gradlew installDebug
-    ```
-    *(If you don't have the wrapper, you can run `gradle installDebug` if you have gradle installed locally)*
-
-## Troubleshooting
-
-- **Device not found:** Run `adb devices` in your terminal. If your device isn't listed, check your cable and ensure USB debugging is enabled.
-- **Gradle sync failed:** Ensure you have an internet connection for the first build so Gradle can download dependencies.
+1.  Open **Moxfield** or **Mana Box** on your phone.
+2.  Select a deck and tap **Share** (usually as text or via the system share menu).
+3.  Select **MTG Deck to Oracle** from the list of apps.
+4.  Watch the progress bar. Once finished, a new share menu will appear allowing you to send the generated `.txt` file to your LLM of choice.
