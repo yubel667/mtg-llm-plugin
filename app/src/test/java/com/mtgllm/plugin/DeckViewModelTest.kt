@@ -56,7 +56,7 @@ class DeckViewModelTest {
         
         coEvery { cardDao.getCards(any()) } returns listOf(cachedCard)
 
-        viewModel.processDeck(input)
+        viewModel.processDeck(input, "My Deck", false)
         
         val finalState = viewModel.state.value
         assertTrue("Expected Success state but was $finalState", 
@@ -72,7 +72,7 @@ class DeckViewModelTest {
             data = listOf(ScryfallCard("Sol Ring", "Tap to add CC", null))
         )
 
-        viewModel.processDeck(input)
+        viewModel.processDeck(input, "My Deck", false)
         
         val finalState = viewModel.state.value
         assertTrue("Expected Success state but was $finalState", 

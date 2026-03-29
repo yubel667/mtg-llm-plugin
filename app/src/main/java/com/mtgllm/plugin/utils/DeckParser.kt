@@ -4,7 +4,7 @@ import org.jsoup.Jsoup
 import java.io.IOException
 
 data class ParsedCard(val quantity: Int, val name: String)
-data class DeckInfo(val name: String, val cards: List<ParsedCard>)
+data class DeckInfo(val name: String, val cards: List<ParsedCard>, val rawText: String)
 
 object DeckParser {
     // Regex matches formats like "1 Sol Ring", "4x Lightning Bolt", "1 Arcane Signet (CLB) 298"
@@ -17,7 +17,7 @@ object DeckParser {
         return parseText(input)
     }
 
-    private fun parseText(text: String, deckName: String = "New Deck"): DeckInfo {
+    private fun parseText(text: String, deckName: String? = null): DeckInfo {
         val cards = text.lines()
             .map { it.trim() }
             .filter { it.isNotEmpty() }
@@ -35,7 +35,9 @@ object DeckParser {
                     null
                 }
             }
-        return DeckInfo(deckName, cards)
+        
+        val defaultName = deckName ?: cards.firstOrNull()?.name ?: "New Deck"
+        return DeckInfo(defaultName, cards, text)
     }
 
     private fun parseUrl(url: String): DeckInfo {
@@ -45,10 +47,10 @@ object DeckParser {
                 .userAgent("MTG-LLM-Plugin/1.0")
                 .get()
             val title = doc.title().split("|").firstOrNull()?.trim() ?: "New Deck"
-            // Simple fallback: parse the entire text of the body
-            parseText(doc.body().text(), deckName = title)
+            val bodyText = doc.text() // Get all text from the page as raw text
+            parseText(bodyText, deckName = title)
         } catch (e: IOException) {
-            DeckInfo("Error Fetching Deck", emptyList())
+            DeckInfo("Error Fetching Deck", emptyList(), "URL: $url\nError: ${e.localizedMessage}")
         }
     }
 }

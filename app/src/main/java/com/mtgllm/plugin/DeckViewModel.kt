@@ -30,7 +30,7 @@ sealed class DeckProcessState {
     data class Error(val message: String) : DeckProcessState()
 }
 
-class DeckViewModel(
+class DeckViewModel @JvmOverloads constructor(
     application: Application,
     private val cardDao: com.mtgllm.plugin.data.CardDao? = null,
     private val scryfallService: com.mtgllm.plugin.api.ScryfallService? = null,
@@ -43,7 +43,7 @@ class DeckViewModel(
     private val _state = MutableLiveData<DeckProcessState>(DeckProcessState.Idle)
     val state: LiveData<DeckProcessState> = _state
 
-    fun processDeck(input: String) {
+    fun processDeck(input: String, customName: String? = null, appendTimestamp: Boolean = true) {
         viewModelScope.launch {
             _state.value = DeckProcessState.Processing(0, "Parsing deck...")
             
@@ -53,6 +53,7 @@ class DeckViewModel(
                 return@launch
             }
 
+            val deckName = customName ?: deckInfo.name
             val cardNames = deckInfo.cards.map { it.name }.distinct()
             val oracleTexts = mutableMapOf<String, String>()
 
@@ -92,7 +93,7 @@ class DeckViewModel(
             // 3. Generate File
             _state.value = DeckProcessState.Processing(90, "Generating Oracle text file...")
             val resultFile = withContext(ioDispatcher) {
-                generateResultFile(deckInfo, oracleTexts)
+                generateResultFile(deckInfo, deckName, appendTimestamp, oracleTexts)
             }
 
             if (resultFile != null) {
@@ -118,10 +119,17 @@ class DeckViewModel(
         return result
     }
 
-    private fun generateResultFile(deckInfo: DeckInfo, oracleTexts: Map<String, String>): File? {
+    private fun generateResultFile(
+        deckInfo: DeckInfo,
+        deckName: String,
+        appendTimestamp: Boolean,
+        oracleTexts: Map<String, String>
+    ): File? {
         return try {
             val content = buildString {
-                append("Deck: ${deckInfo.name}\n")
+                append("=== ORIGINAL DECKLIST ===\n\n")
+                append(deckInfo.rawText)
+                append("\n\n=== ORACLE TEXT APPENDED BELOW ===\n\n")
                 append("Generated on: ${Date()}\n\n")
 
                 for (card in deckInfo.cards) {
@@ -131,9 +139,13 @@ class DeckViewModel(
                 }
             }
 
-            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-            val safeName = deckInfo.name.replace(Regex("[^a-zA-Z0-9.-]"), "_")
-            val fileName = "${safeName}_$timestamp.txt"
+            val safeName = deckName.replace(Regex("[^a-zA-Z0-9.-]"), "_")
+            val fileName = if (appendTimestamp) {
+                val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+                "${safeName}_$timestamp.txt"
+            } else {
+                "$safeName.txt"
+            }
             
             val file = File(getApplication<Application>().cacheDir, fileName)
             file.writeText(content)

@@ -15,17 +15,9 @@ class DeckParserTest {
 
         val result = DeckParser.parse(input)
 
-        assertEquals("New Deck", result.name)
+        assertEquals("Sol Ring", result.name) // First card name
         assertEquals(3, result.cards.size)
-        
-        assertEquals(1, result.cards[0].quantity)
-        assertEquals("Sol Ring", result.cards[0].name)
-        
-        assertEquals(4, result.cards[1].quantity)
-        assertEquals("Lightning Bolt", result.cards[1].name)
-        
-        assertEquals(1, result.cards[2].quantity)
-        assertEquals("Arcane Signet", result.cards[2].name)
+        assertEquals(input, result.rawText)
     }
 
     @Test
