@@ -136,6 +136,20 @@
                             android:text="Load URL" />
                     </LinearLayout>
 
+                    <com.google.android.material.divider.MaterialDivider
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:layout_marginBottom="16dp" />
+
+                    <Button
+                        android:id="@+id/manaBoxGuideButton"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="How to import from Mana Box?"
+                        app:icon="@drawable/ic_help" />
+
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -230,7 +244,8 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
                 android:gravity="center"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                android:visibility="gone">
 
                 <com.google.android.material.progressindicator.LinearProgressIndicator
                     android:id="@+id/progressBar"
@@ -336,7 +351,7 @@
                 android:layout_marginTop="48dp"
                 android:alpha="0.6"
                 android:gravity="center"
-                android:text="Tip: You can also share a decklist directly from Mana Box or Moxfield to this app."
+                android:text="Only supports Mana Box (File/Text), Moxfield URLs, and MTGTop8 URLs. Parses may fail if site formats change."
                 android:textAppearance="?attr/textAppearanceLabelSmall" />
 
         </LinearLayout>

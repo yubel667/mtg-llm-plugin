@@ -2,18 +2,21 @@ package com.mtgllm.plugin
 
 import android.content.Intent
 import android.os.Bundle
-import android.text.method.ScrollingMovementMethod
 import android.view.View
+import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.mtgllm.plugin.databinding.ActivityMainBinding
+import io.noties.markwon.Markwon
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val viewModel: DeckViewModel by viewModels()
     private var lastReceivedText: String? = null
+    private lateinit var markwon: Markwon
 
     private val saveFileLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
         uri?.let { viewModel.saveFileToUri(this, it) }
@@ -24,6 +27,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        markwon = Markwon.create(this)
         setupClickListeners()
         setupObservers()
         handleIntent(intent)
@@ -76,6 +80,38 @@ class MainActivity : AppCompatActivity() {
         binding.optionsButton.setOnClickListener {
             startActivity(Intent(this, OptionsActivity::class.java))
         }
+
+        binding.manaBoxGuideButton.setOnClickListener {
+            showManaBoxGuide()
+        }
+    }
+
+    private fun showManaBoxGuide() {
+        val guide = """
+            ### Importing from Mana Box
+            
+            1. Open your deck in **Mana Box**.
+            2. Tap the **Menu** (three dots) in the top right.
+            3. Tap **Share**.
+            4. Select **File** (recommended for best results).
+            5. Find and tap **MTG Deck to Oracle** in the system share menu.
+            
+            ---
+            
+            *Tip: You can also choose 'Text' instead of 'File' and share it to this app.*
+        """.trimIndent()
+
+        val padding = (16 * resources.displayMetrics.density).toInt()
+        val textView = TextView(this).apply {
+            setPadding(padding, padding, padding, 0)
+        }
+        markwon.setMarkdown(textView, guide)
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Mana Box Import Guide")
+            .setView(textView)
+            .setPositiveButton("Got it", null)
+            .show()
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -86,8 +122,9 @@ class MainActivity : AppCompatActivity() {
     private fun resetUI() {
         binding.configCard.visibility = View.GONE
         binding.urlCard.visibility = View.VISIBLE
+        binding.statusContainer.visibility = View.GONE
         binding.progressBar.visibility = View.GONE
-        binding.statusTextView.text = "Ready"
+        binding.statusTextView.text = ""
         binding.messageTextView.text = ""
         binding.resetButton.visibility = View.GONE
         binding.successActionsLayout.visibility = View.GONE
@@ -97,6 +134,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleIntent(intent: Intent) {
         if (Intent.ACTION_SEND == intent.action) {
+            binding.statusContainer.visibility = View.VISIBLE
             binding.statusTextView.text = "Receiving share..."
             
             // Check if it's a supported URL being shared
@@ -160,6 +198,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showError(message: String) {
         binding.configCard.visibility = View.GONE
+        binding.statusContainer.visibility = View.VISIBLE
         binding.statusTextView.text = "Error"
         binding.messageTextView.text = message
         binding.resetButton.visibility = View.VISIBLE
@@ -169,6 +208,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun prepareForConversion(text: String, defaultName: String?) {
         lastReceivedText = text
+        binding.statusContainer.visibility = View.VISIBLE
         binding.statusTextView.text = "Analyzing list..."
         
         val deckInfo = com.mtgllm.plugin.utils.DeckParser.parse(text, defaultName)
@@ -178,6 +218,7 @@ class MainActivity : AppCompatActivity() {
     private fun showConfig(deckInfo: com.mtgllm.plugin.utils.DeckInfo) {
         binding.configCard.visibility = View.VISIBLE
         binding.urlCard.visibility = View.GONE
+        binding.statusContainer.visibility = View.VISIBLE
         binding.statusTextView.text = "Analysis Complete"
         binding.deckNameEditText.setText(deckInfo.name)
         
@@ -216,9 +257,10 @@ class MainActivity : AppCompatActivity() {
         viewModel.state.observe(this) { state ->
             when (state) {
                 is DeckProcessState.Idle -> {
-                    binding.progressBar.visibility = View.GONE
+                    // Handled by resetUI
                 }
                 is DeckProcessState.Processing -> {
+                    binding.statusContainer.visibility = View.VISIBLE
                     binding.progressBar.visibility = View.VISIBLE
                     binding.progressBar.progress = state.progress
                     binding.statusTextView.text = "Processing..."
@@ -228,6 +270,7 @@ class MainActivity : AppCompatActivity() {
                     binding.previewCard.visibility = View.GONE
                 }
                 is DeckProcessState.Success -> {
+                    binding.statusContainer.visibility = View.VISIBLE
                     binding.progressBar.visibility = View.GONE
                     binding.statusTextView.text = if (state.failedCards.isEmpty()) "Success!" else "Conversion Partial"
                     
@@ -248,6 +291,7 @@ class MainActivity : AppCompatActivity() {
                     binding.previewTextView.text = viewModel.getLatestResultText()
                 }
                 is DeckProcessState.Error -> {
+                    binding.statusContainer.visibility = View.VISIBLE
                     binding.progressBar.visibility = View.GONE
                     binding.statusTextView.text = "Error"
                     binding.messageTextView.text = state.message

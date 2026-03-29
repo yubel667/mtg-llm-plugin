@@ -2,61 +2,44 @@
 
 This utility converts Magic: The Gathering decklists into a comprehensive text file containing full Oracle text for every card. This format is optimized for analysis by LLMs (ChatGPT, Claude, etc.).
 
+## ⚠️ Supported Sources & Disclaimer
+
+This app is designed specifically for:
+1.  **Mana Box**: Exported deck files (`.txt`) or shared text.
+2.  **Moxfield**: Public deck URLs.
+3.  **MTGTop8**: Deck/Event URLs.
+
+> **Note**: Other websites or apps are **not** officially supported. Since we rely on third-party formats, updates to those platforms may occasionally break our parser.
+
 ## 🚀 Workflows
 
-### 1. Share from App (Recommended)
-This is the fastest way to process a deck from **Mana Box** or other apps.
-1.  Open your deck in your favorite MTG app.
-2.  Tap **Share** and choose **File** or **Text**.
-3.  Select **MTG Deck to Oracle** from the share menu.
-4.  The app will open, analyze the list, and let you configure the output.
+### 1. Share from Mana Box (Best)
+1.  Open your deck in **Mana Box**.
+2.  Tap the menu (three dots) -> **Share**.
+3.  Choose **File** (recommended) or **Text**.
+4.  Select **MTG Deck to Oracle** from the share menu.
 
-### 2. URL Import
-Supported sites: **Moxfield**, **MTGTop8**.
-1.  Copy the URL of a public deck from your browser.
+### 2. URL Import (Moxfield / MTGTop8)
+1.  Copy the URL of a deck from your browser.
 2.  Open this app and tap the **Paste** button.
-3.  Tap **Load Deck from URL**.
-4.  The app will fetch the deck data directly from the site's API.
+3.  Tap **Load URL**.
 
 ---
 
 ## 🛠️ Configuration Options
 
-*   **Deck Name**: Pre-filled with the filename or the first card name (Commander). You can change this to anything you like.
-*   **Append date/time**: Adds a unique timestamp to the filename so you don't overwrite previous versions.
-*   **Sideboard**: Toggle this to include or exclude cards in the Sideboard section.
-*   **Maybeboard**: Toggle this to include or exclude cards in the Maybeboard/Considering section.
-
----
-
-## 🕒 History & Management
-
-*   **Past Decks**: Tap the **Clock** icon in the toolbar to see your last processed decks. You can search by name, quickly re-share them, or save them to your local storage again.
-*   **Options & Stats**: Tap the **Gear** icon to customize your experience:
-    *   **Auto-share**: Enable or disable the automatic share menu.
-    *   **History Limit**: Control how many past decks are kept (default is 100).
-    *   **Cache Stats**: See how many cards are stored in your local database.
-    *   **Cleanup**: Buttons to clear your card cache or wipe your history.
-
----
-
-## 📄 Output Format
-The app generates a single `.txt` file with:
-1.  **Deck Info**: Name, card counts, and generation date.
-2.  **Original List**: Your decklist exactly as it was imported.
-3.  **Oracle Appendix**: Full Oracle text for every card, categorized by section (Main, Sideboard, etc.).
+*   **Deck Name**: Pre-filled automatically. You can edit this.
+*   **Sideboard/Maybeboard**: Choose whether to include these sections in the final Oracle dump.
+*   **Auto-share**: Can be enabled in the **Options** (Gear icon) to skip the manual share step on success.
 
 ---
 
 ## 🤖 LLM Analysis
-Once the file is generated:
-1.  A system **Share** menu will appear automatically.
-2.  Choose your preferred LLM app (e.g., ChatGPT).
-3.  The text file will be attached.
-4.  **Prompt Idea**: *"Analyze this decklist for power level, mana curve, and suggest 3 improvements based on the current meta."*
+Once the file is generated and shared to your LLM:
+*   **Prompt Idea**: *"Analyze this decklist for power level, mana curve, and suggest 3 improvements based on the current meta."*
 
 ---
 
 ## 💡 Troubleshooting
-*   **"Card not found"**: Ensure the card name is correct. We use the Scryfall API for data.
-*   **Cache**: Card data is saved locally after the first fetch to make future imports instant.
+*   **"Card not found"**: Ensure the card name is correct.
+*   **Partial Success**: If some cards fail, the app will list them and allow you to share the partial result manually.
