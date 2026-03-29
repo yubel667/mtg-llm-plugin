@@ -1,6 +1,7 @@
 package com.mtgllm.plugin
 
 import android.app.Application
+import android.content.Context
 import android.content.Intent
 import android.util.Log
 import androidx.core.content.FileProvider
@@ -33,7 +34,7 @@ import java.util.Locale
 sealed class DeckProcessState {
     data object Idle : DeckProcessState()
     data class Processing(val progress: Int, val message: String) : DeckProcessState()
-    data class Success(val fileName: String, val cardCount: Int) : DeckProcessState()
+    data class Success(val fileName: String, val cardCount: Int, val failedCards: List<String> = emptyList()) : DeckProcessState()
     data class Error(val message: String) : DeckProcessState()
 }
 
@@ -48,12 +49,19 @@ class DeckViewModel @JvmOverloads constructor(
     private val realCardDao = cardDao ?: CardDatabase.getDatabase(application).cardDao()
     private val realScryfallService = scryfallService ?: RetrofitClient.scryfallService
     private val realMoxfieldService = moxfieldService ?: RetrofitClient.moxfieldService
+    private val prefs = application.getSharedPreferences("mtg_deck_prefs", Context.MODE_PRIVATE)
 
     private val _state = MutableLiveData<DeckProcessState>(DeckProcessState.Idle)
     val state: LiveData<DeckProcessState> = _state
 
     private val _moxfieldDeck = MutableLiveData<DeckInfo?>(null)
     val moxfieldDeck: LiveData<DeckInfo?> = _moxfieldDeck
+
+    private var latestResultFile: File? = null
+
+    var autoShareEnabled: Boolean
+        get() = prefs.getBoolean("auto_share", true)
+        set(value) = prefs.edit().putBoolean("auto_share", value).apply()
 
     fun fetchDeckFromUrl(url: String) {
         if (url.contains("moxfield.com/decks/")) {
@@ -155,7 +163,7 @@ class DeckViewModel @JvmOverloads constructor(
                     val newEntities = mutableListOf<CardEntity>()
                     
                     for (card in fetchedCards) {
-                        val text = card.oracleText ?: card.cardFaces?.joinToString("\n---\n") { it.oracleText ?: "" } ?: ""
+                        val text = formatOracleText(card)
                         oracleTexts[card.name] = text
                         newEntities.add(CardEntity(card.name, text))
                     }
@@ -178,14 +186,38 @@ class DeckViewModel @JvmOverloads constructor(
             }
 
             if (resultFile != null) {
+                latestResultFile = resultFile
                 val totalCount = filteredCards.sumOf { it.quantity }
-                _state.value = DeckProcessState.Success(resultFile.name, totalCount)
-                // In test environment, skip sharing to avoid Android class dependency
-                if (System.getProperty("java.runtime.name") == "Android Runtime") {
-                    shareFile(resultFile)
+                val failedOnes = cardNames.filterNot { oracleTexts.containsKey(it) }
+                
+                _state.value = DeckProcessState.Success(resultFile.name, totalCount, failedOnes)
+                
+                // Automatic share only if enabled AND no cards failed
+                if (autoShareEnabled && failedOnes.isEmpty() && System.getProperty("java.runtime.name") == "Android Runtime") {
+                    shareLatestFile()
                 }
             } else {
                 _state.value = DeckProcessState.Error("Failed to generate file.")
+            }
+        }
+    }
+
+    private fun formatOracleText(card: ScryfallCard): String {
+        return if (card.cardFaces != null) {
+            card.cardFaces.joinToString("\n---\n") { face ->
+                buildString {
+                    append("${face.name} ${face.manaCost ?: ""}\n")
+                    append("${face.typeLine ?: ""}\n")
+                    if (!face.oracleText.isNullOrEmpty()) append("${face.oracleText}\n")
+                    if (!face.power.isNullOrEmpty()) append("${face.power}/${face.toughness}\n")
+                }
+            }
+        } else {
+            buildString {
+                append("${card.name} ${card.manaCost ?: ""}\n")
+                append("${card.typeLine ?: ""}\n")
+                if (!card.oracleText.isNullOrEmpty()) append("${card.oracleText}\n")
+                if (!card.power.isNullOrEmpty()) append("${card.power}/${card.toughness}\n")
             }
         }
     }
@@ -224,7 +256,7 @@ class DeckViewModel @JvmOverloads constructor(
 
                 for (card in cards) {
                     append("[${card.section}] ${card.quantity}x ${card.name}\n")
-                    append(oracleTexts[card.name] ?: "Oracle text not found.")
+                    append(oracleTexts[card.name] ?: "!!! CARD NOT FOUND IN SCRYFALL !!!")
                     append("\n\n--------------------------------\n\n")
                 }
             }
@@ -246,16 +278,39 @@ class DeckViewModel @JvmOverloads constructor(
         }
     }
 
-    private fun shareFile(file: File) {
-        val context = getApplication<Application>()
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    fun shareLatestFile() {
+        latestResultFile?.let { file ->
+            val context = getApplication<Application>()
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            val chooser = Intent.createChooser(intent, "Share Oracle Text File")
+            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(chooser)
         }
-        val chooser = Intent.createChooser(intent, "Share Oracle Text File")
-        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(chooser)
+    }
+
+    fun getLatestResultText(): String? {
+        return latestResultFile?.readText()
+    }
+
+    fun getLatestFileName(): String? {
+        return latestResultFile?.name
+    }
+
+    fun saveFileToUri(context: Context, uri: android.net.Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val content = getLatestResultText() ?: return@launch
+                context.contentResolver.openOutputStream(uri)?.use { output ->
+                    output.write(content.toByteArray())
+                }
+            } catch (e: Exception) {
+                Log.e("DeckViewModel", "Error saving file to URI", e)
+            }
+        }
     }
 }

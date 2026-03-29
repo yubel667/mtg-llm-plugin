@@ -22,6 +22,23 @@ class DeckParserTest {
     }
 
     @Test
+    fun `normalize double sided cards`() {
+        val input = """
+            1 Delver of Secrets / Insectile Aberration
+            1 Bala Ged Recovery/Bala Ged Sanctuary
+            1 Fire // Ice
+            1 CardA/CardB
+        """.trimIndent()
+
+        val result = DeckParser.parse(input)
+        
+        assertEquals("Delver of Secrets // Insectile Aberration", result.cards[0].name)
+        assertEquals("Bala Ged Recovery // Bala Ged Sanctuary", result.cards[1].name)
+        assertEquals("Fire // Ice", result.cards[2].name)
+        assertEquals("CardA // CardB", result.cards[3].name)
+    }
+
+    @Test
     fun `parse decklist with sections`() {
         val input = """
             1 Sol Ring

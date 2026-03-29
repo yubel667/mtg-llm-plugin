@@ -3,8 +3,10 @@ package com.mtgllm.plugin
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.mtgllm.plugin.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -12,6 +14,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val viewModel: DeckViewModel by viewModels()
     private var lastReceivedText: String? = null
+
+    private val saveFileLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        uri?.let { viewModel.saveFileToUri(this, it) }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -21,11 +27,26 @@ class MainActivity : AppCompatActivity() {
         setupClickListeners()
         setupObservers()
         handleIntent(intent)
+        
+        binding.autoShareCheckBox.isChecked = viewModel.autoShareEnabled
     }
 
     private fun setupClickListeners() {
         binding.resetButton.setOnClickListener {
             resetUI()
+        }
+
+        binding.shareFileButton.setOnClickListener {
+            viewModel.shareLatestFile()
+        }
+
+        binding.previewButton.setOnClickListener {
+            showPreview()
+        }
+
+        binding.saveToLocalButton.setOnClickListener {
+            val fileName = viewModel.getLatestFileName() ?: "deck.txt"
+            saveFileLauncher.launch(fileName)
         }
 
         binding.pasteButton.setOnClickListener {
@@ -53,6 +74,19 @@ class MainActivity : AppCompatActivity() {
         binding.helpButton.setOnClickListener {
             startActivity(Intent(this, HelpActivity::class.java))
         }
+
+        binding.autoShareCheckBox.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.autoShareEnabled = isChecked
+        }
+    }
+
+    private fun showPreview() {
+        val text = viewModel.getLatestResultText() ?: "No content available."
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Result Preview")
+            .setMessage(text)
+            .setPositiveButton("Close", null)
+            .show()
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -67,6 +101,7 @@ class MainActivity : AppCompatActivity() {
         binding.statusTextView.text = "Ready"
         binding.messageTextView.text = ""
         binding.resetButton.visibility = View.GONE
+        binding.successActionsLayout.visibility = View.GONE
         binding.moxfieldUrlEditText.text?.clear()
     }
 
@@ -138,6 +173,7 @@ class MainActivity : AppCompatActivity() {
         binding.statusTextView.text = "Error"
         binding.messageTextView.text = message
         binding.resetButton.visibility = View.VISIBLE
+        binding.successActionsLayout.visibility = View.GONE
     }
 
     private fun prepareForConversion(text: String, defaultName: String?) {
@@ -158,11 +194,12 @@ class MainActivity : AppCompatActivity() {
             val finalName = binding.deckNameEditText.text.toString().trim()
             val useTimestamp = binding.timestampCheckBox.isChecked
             val includeSideboard = binding.sideboardCheckBox.isChecked
-            val includeMayboard = binding.mayboardCheckBox.isChecked
+            val includeMaybeboard = binding.mayboardCheckBox.isChecked
             
             binding.configCard.visibility = View.GONE
             binding.progressBar.visibility = View.VISIBLE
             binding.resetButton.visibility = View.GONE
+            binding.successActionsLayout.visibility = View.GONE
             
             val textToProcess = lastReceivedText ?: deckInfo.rawText
             
@@ -171,7 +208,7 @@ class MainActivity : AppCompatActivity() {
                 if (finalName.isNotEmpty()) finalName else null, 
                 useTimestamp,
                 includeSideboard,
-                includeMayboard
+                includeMaybeboard
             )
         }
     }
@@ -195,12 +232,23 @@ class MainActivity : AppCompatActivity() {
                     binding.statusTextView.text = "Processing..."
                     binding.messageTextView.text = state.message
                     binding.resetButton.visibility = View.GONE
+                    binding.successActionsLayout.visibility = View.GONE
                 }
                 is DeckProcessState.Success -> {
                     binding.progressBar.visibility = View.GONE
-                    binding.statusTextView.text = "Success!"
-                    binding.messageTextView.text = "Generated: ${state.fileName}\nTotal cards: ${state.cardCount}"
+                    binding.statusTextView.text = if (state.failedCards.isEmpty()) "Success!" else "Conversion Partial"
+                    
+                    val msg = buildString {
+                        append("Generated: ${state.fileName}\n")
+                        append("Total cards: ${state.cardCount}")
+                        if (state.failedCards.isNotEmpty()) {
+                            append("\n\nFailed to convert (${state.failedCards.size}):\n")
+                            append(state.failedCards.joinToString(", "))
+                        }
+                    }
+                    binding.messageTextView.text = msg
                     binding.resetButton.visibility = View.VISIBLE
+                    binding.successActionsLayout.visibility = View.VISIBLE
                 }
                 is DeckProcessState.Error -> {
                     binding.progressBar.visibility = View.GONE
@@ -208,6 +256,7 @@ class MainActivity : AppCompatActivity() {
                     binding.messageTextView.text = state.message
                     binding.resetButton.visibility = View.VISIBLE
                     binding.configCard.visibility = View.GONE
+                    binding.successActionsLayout.visibility = View.GONE
                 }
             }
         }

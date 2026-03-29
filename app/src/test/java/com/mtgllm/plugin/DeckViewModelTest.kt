@@ -135,6 +135,7 @@ class DeckViewModelTest {
             finalState is DeckProcessState.Success)
         val successState = finalState as DeckProcessState.Success
         assertEquals(1, successState.cardCount)
+        assertTrue(successState.failedCards.isEmpty())
     }
 
     @Test
@@ -143,7 +144,7 @@ class DeckViewModelTest {
         
         coEvery { cardDao.getCards(any()) } returns emptyList()
         coEvery { scryfallService.getCollection(any()) } returns ScryfallCollectionResponse(
-            data = listOf(ScryfallCard("Sol Ring", "Tap to add CC", null))
+            data = listOf(ScryfallCard("Sol Ring", "{1}", "Artifact", "Tap to add CC", null, null, null))
         )
 
         viewModel.processDeck(input, "My Deck", false, true, false)
@@ -154,5 +155,6 @@ class DeckViewModelTest {
             finalState is DeckProcessState.Success)
         val successState = finalState as DeckProcessState.Success
         assertEquals(1, successState.cardCount)
+        assertTrue(successState.failedCards.isEmpty())
     }
 }

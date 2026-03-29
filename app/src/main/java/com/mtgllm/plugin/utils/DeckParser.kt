@@ -93,11 +93,21 @@ object DeckParser {
                 val lineMatch = LINE_PATTERN.find(trimmed)
                 if (lineMatch != null) {
                     val quantity = lineMatch.groupValues[1].toIntOrNull() ?: 1
-                    val name = lineMatch.groupValues[2].trim()
+                    var name = lineMatch.groupValues[2].trim()
+
+                        // Normalize double sided cards: "Card A / Card B" or "CardA/CardB" -> "Card A // Card B"
+                        if (name.contains("/") && !name.contains("//")) {
+                            val parts = name.split("/")
+                            if (parts.size == 2) {
+                                name = "${parts[0].trim()} // ${parts[1].trim()}"
+                            }
+                        }
+
                     if (name.isNotEmpty()) {
                         cards.add(ParsedCard(quantity, name, currentSection))
                     }
                 }
+
             }
         }
         
