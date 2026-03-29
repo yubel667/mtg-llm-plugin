@@ -82,9 +82,52 @@ class DeckViewModel @JvmOverloads constructor(
         get() = prefs.getBoolean("ask_before_delete", true)
         set(value) = prefs.edit().putBoolean("ask_before_delete", value).apply()
 
+    private val _gameChangers = MutableLiveData<List<String>>(emptyList())
+    val gameChangers: LiveData<List<String>> = _gameChangers
+
+    private val _lastGameChangerFetch = MutableLiveData<Long>(0)
+    val lastGameChangerFetch: LiveData<Long> = _lastGameChangerFetch
+
     init {
         refreshStats()
         loadHistory()
+        loadGameChangers()
+    }
+
+    private fun loadGameChangers() {
+        val cached = prefs.getString("game_changers_cache", "") ?: ""
+        if (cached.isNotEmpty()) {
+            _gameChangers.value = cached.split("\n")
+        }
+        _lastGameChangerFetch.value = prefs.getLong("game_changers_last_fetch", 0)
+    }
+
+    fun fetchGameChangers() {
+        viewModelScope.launch {
+            _state.value = DeckProcessState.Processing(0, "Fetching Game Changers from Scryfall...")
+            try {
+                // Using Scryfall search API with is:gamechanger filter
+                val response = withContext(ioDispatcher) { realScryfallService.search("is:gamechanger") }
+                val names = response.data.map { it.name }.sorted()
+                
+                if (names.isEmpty()) {
+                    _state.value = DeckProcessState.Error("Game Changers Fetch Error: Scryfall returned no results for 'is:gamechanger'.")
+                    return@launch
+                }
+
+                prefs.edit()
+                    .putString("game_changers_cache", names.joinToString("\n"))
+                    .putLong("game_changers_last_fetch", System.currentTimeMillis())
+                    .apply()
+                
+                _gameChangers.value = names
+                _lastGameChangerFetch.value = System.currentTimeMillis()
+                _state.value = DeckProcessState.Idle
+            } catch (e: Exception) {
+                Log.e("DeckViewModel", "Error fetching game changers from Scryfall", e)
+                _state.value = DeckProcessState.Error("Game Changers Fetch Error: ${e.localizedMessage}\n\nMake sure Scryfall API is reachable.")
+            }
+        }
     }
 
     fun refreshStats() {
@@ -184,7 +227,8 @@ class DeckViewModel @JvmOverloads constructor(
         customName: String? = null,
         appendTimestamp: Boolean = true,
         includeSideboard: Boolean = true,
-        includeMaybeboard: Boolean = false
+        includeMaybeboard: Boolean = false,
+        includeGameChangers: Boolean = false
     ) {
         viewModelScope.launch {
             _state.value = DeckProcessState.Processing(0, "Parsing deck...")
@@ -261,7 +305,14 @@ class DeckViewModel @JvmOverloads constructor(
             // 3. Generate File
             _state.value = DeckProcessState.Processing(90, "Generating Oracle text file...")
             val resultFile = withContext(ioDispatcher) {
-                generateResultFile(deckInfo.rawText, filteredCards, deckName, appendTimestamp, oracleTexts)
+                generateResultFile(
+                    deckInfo.rawText, 
+                    filteredCards, 
+                    deckName, 
+                    appendTimestamp, 
+                    oracleTexts,
+                    if (includeGameChangers) _gameChangers.value else null
+                )
             }
 
             if (resultFile != null) {
@@ -275,7 +326,8 @@ class DeckViewModel @JvmOverloads constructor(
                     timestamp = System.currentTimeMillis(),
                     fileName = resultFile.name,
                     cardCount = totalCount,
-                    resultText = resultFile.readText()
+                    resultText = resultFile.readText(),
+                    rawInput = input
                 )
                 withContext(ioDispatcher) {
                     realDeckRecordDao.insertRecord(record)
@@ -315,23 +367,13 @@ class DeckViewModel @JvmOverloads constructor(
         }
     }
 
-    private suspend fun fetchInBatches(names: List<String>): List<ScryfallCard> {
-        val result = mutableListOf<ScryfallCard>()
-        val chunks = names.chunked(75) // Scryfall batch limit is 75
-        for (chunk in chunks) {
-            val request = ScryfallCollectionRequest(chunk.map { CardIdentifier(it) })
-            val response = realScryfallService.getCollection(request)
-            result.addAll(response.data)
-        }
-        return result
-    }
-
     private fun generateResultFile(
         rawText: String,
         cards: List<ParsedCard>,
         deckName: String,
         appendTimestamp: Boolean,
-        oracleTexts: Map<String, String>
+        oracleTexts: Map<String, String>,
+        gameChangers: List<String>? = null
     ): File? {
         return try {
             val totalCards = cards.sumOf { it.quantity }
@@ -343,9 +385,40 @@ class DeckViewModel @JvmOverloads constructor(
                 append("Total cards dumped: $totalCards ($uniqueCards unique)\n")
                 append("Generated on: ${Date()}\n\n")
 
-                append("=== ORIGINAL DECKLIST ===\n\n")
-                append(rawText)
-                append("\n\n=== ORACLE TEXT APPENDED BELOW ===\n\n")
+                append("=== DECKLIST ===\n\n")
+                val sections = cards.groupBy { it.section }
+                
+                sections[CardSection.COMMANDER]?.let { list ->
+                    append("[COMMANDER]\n")
+                    list.forEach { append("${it.quantity}x ${it.name}\n") }
+                    append("\n")
+                }
+                
+                sections[CardSection.MAIN]?.let { list ->
+                    append("[MAINBOARD]\n")
+                    list.forEach { append("${it.quantity}x ${it.name}\n") }
+                    append("\n")
+                }
+                
+                sections[CardSection.SIDEBOARD]?.let { list ->
+                    append("[SIDEBOARD]\n")
+                    list.forEach { append("${it.quantity}x ${it.name}\n") }
+                    append("\n")
+                }
+                
+                sections[CardSection.MAYBOARD]?.let { list ->
+                    append("[MAYBEBOARD]\n")
+                    list.forEach { append("${it.quantity}x ${it.name}\n") }
+                    append("\n")
+                }
+
+                if (!gameChangers.isNullOrEmpty()) {
+                    append("=== COMMANDER GAME CHANGER LIST ===\n\n")
+                    append(gameChangers.joinToString("\n"))
+                    append("\n\n")
+                }
+
+                append("=== ORACLE TEXT APPENDED BELOW ===\n\n")
 
                 for (card in cards) {
                     append("[${card.section}] ${card.quantity}x ${card.name}\n")

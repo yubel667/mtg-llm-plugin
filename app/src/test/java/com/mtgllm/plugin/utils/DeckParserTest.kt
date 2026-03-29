@@ -16,7 +16,7 @@ class DeckParserTest {
 
         val result = DeckParser.parse(input)
 
-        assertEquals("Sol Ring", result.name) // First card name
+        assertEquals("Sol Ring", result.name)
         assertEquals(3, result.cards.size)
         assertEquals(input, result.rawText)
     }
@@ -174,6 +174,80 @@ class DeckParserTest {
     }
 
     @Test
+    fun `parse cards with special characters and long names`() {
+        val input = """
+            1 Lim-Dûl's Vault
+            1 Asmoranomardicadaistinaculdacar
+            1 "Ach! Hans, Run!"
+            1 Théoden, King of Rohan
+        """.trimIndent()
+
+        val result = DeckParser.parse(input)
+        
+        assertEquals(4, result.cards.size)
+        assertEquals("Lim-Dûl's Vault", result.cards[0].name)
+        assertEquals("Asmoranomardicadaistinaculdacar", result.cards[1].name)
+        assertEquals("\"Ach! Hans, Run!\"", result.cards[2].name)
+        assertEquals("Théoden, King of Rohan", result.cards[3].name)
+    }
+
+    @Test
+    fun `parse varied header formats`() {
+        val input = """
+            [ Commander ]
+            1 Urza, Lord High Artificer
+            
+            Mainboard (60)
+            1 Island
+            
+            Sideboard: 15 cards
+            1 Pyroblast
+            
+            --- Maybeboard ---
+            1 Sol Ring
+        """.trimIndent()
+
+        val result = DeckParser.parse(input)
+        
+        assertEquals(CardSection.COMMANDER, result.cards.find { it.name == "Urza, Lord High Artificer" }?.section)
+        assertEquals(CardSection.MAIN, result.cards.find { it.name == "Island" }?.section)
+        assertEquals(CardSection.SIDEBOARD, result.cards.find { it.name == "Pyroblast" }?.section)
+        assertEquals(CardSection.MAYBOARD, result.cards.find { it.name == "Sol Ring" }?.section)
+    }
+
+    @Test
+    fun `parse cards without quantities`() {
+        val input = """
+            Sol Ring
+            Arcane Signet
+            Island
+        """.trimIndent()
+
+        val result = DeckParser.parse(input)
+        
+        assertEquals(3, result.cards.size)
+        assertEquals("Sol Ring", result.cards[0].name)
+        assertEquals(1, result.cards[0].quantity)
+        assertEquals("Island", result.cards[2].name)
+    }
+
+    @Test
+    fun `parse decklist with trailing spaces and junk`() {
+        val input = """
+            1 Sol Ring   
+            4x Lightning Bolt # Best card
+            1 Arcane Signet *foil*
+        """.trimIndent()
+
+        val result = DeckParser.parse(input)
+        
+        assertEquals(3, result.cards.size)
+        assertEquals("Sol Ring", result.cards[0].name)
+        assertEquals("Lightning Bolt", result.cards[1].name)
+        assertEquals("Arcane Signet", result.cards[2].name)
+    }
+
+    @Test
     fun `parse empty input`() {
         val result = DeckParser.parse("")
         assertEquals(0, result.cards.size)
@@ -182,7 +256,7 @@ class DeckParserTest {
 
     @Test
     fun `parse random text with no cards`() {
-        val input = "This is just some random text with no cards in it."
+        val input = "!@# %^&* ()"
         val result = DeckParser.parse(input)
         assertEquals(0, result.cards.size)
     }

@@ -3,17 +3,10 @@ package com.mtgllm.plugin
 import android.app.Application
 import android.util.Log
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
-import com.mtgllm.plugin.api.ScryfallCard
-import com.mtgllm.plugin.api.ScryfallCollectionResponse
-import com.mtgllm.plugin.api.ScryfallService
-import com.mtgllm.plugin.api.MoxfieldService
+import com.mtgllm.plugin.api.*
 import com.mtgllm.plugin.data.CardDao
 import com.mtgllm.plugin.data.CardEntity
-import io.mockk.coEvery
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkStatic
-import io.mockk.unmockkStatic
+import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.*
@@ -50,6 +43,16 @@ class DeckViewModelTest {
         Dispatchers.setMain(testDispatcher)
         
         every { application.cacheDir } returns File(".")
+        
+        val initSearchResponse = ScryfallSearchResponse(0, false, null, emptyList())
+        coEvery { scryfallService.search(any()) } returns initSearchResponse
+        
+        val initDeckResponse = MoxfieldDeckResponse(
+            name = "Init",
+            mainboard = emptyMap(), commanders = emptyMap(), companions = emptyMap(), sideboard = emptyMap(), maybeboard = emptyMap()
+        )
+        coEvery { moxfieldService.getDeck(any()) } returns initDeckResponse
+        
         viewModel = DeckViewModel(application, cardDao, deckRecordDao, scryfallService, moxfieldService, testDispatcher)
     }
 
@@ -70,6 +73,97 @@ class DeckViewModelTest {
         assertTrue("Expected Success state but was $finalState", finalState is DeckProcessState.Success)
         val successState = finalState as DeckProcessState.Success
         assertTrue("Expected no failed cards but found ${successState.failedCards}", successState.failedCards.isEmpty())
+    }
+
+    @Test
+    fun `history limit is respected when saving new records`() = runTest {
+        val input = "1 Sol Ring"
+        coEvery { cardDao.getCards(any()) } returns emptyList()
+        coEvery { scryfallService.getCollection(any()) } returns ScryfallCollectionResponse(
+            data = listOf(ScryfallCard("Sol Ring", "{1}", "Artifact", "Text", null, null, null)),
+            notFound = emptyList()
+        )
+        
+        viewModel.historyLimit = 10
+        
+        viewModel.processDeck(input, "History Test", false, true, false)
+        advanceUntilIdle()
+        
+        coVerify(atLeast = 1) { deckRecordDao.trimRecords(any()) }
+    }
+
+    @Test
+    fun `deleteRecord removes entry and reloads history`() = runTest {
+        val record = com.mtgllm.plugin.data.DeckRecordEntity(1, "Old Deck", 12345, "old.txt", 60, "results")
+        
+        viewModel.deleteRecord(record)
+        advanceUntilIdle()
+        
+        coVerify { deckRecordDao.deleteRecord(1) }
+        coVerify { deckRecordDao.getAllRecords() }
+    }
+
+    @Test
+    fun `loadHistory with query filters records`() = runTest {
+        val records = listOf(
+            com.mtgllm.plugin.data.DeckRecordEntity(1, "Dragons", 1, "d.txt", 60, "text"),
+            com.mtgllm.plugin.data.DeckRecordEntity(2, "Elves", 2, "e.txt", 60, "text")
+        )
+        coEvery { deckRecordDao.getAllRecords() } returns records
+        
+        viewModel.loadHistory("Dragon")
+        advanceUntilIdle()
+        
+        assertEquals(1, viewModel.history.value?.size)
+        assertEquals("Dragons", viewModel.history.value?.get(0)?.name)
+    }
+
+    @Test
+    fun `fetchGameChangers updates cache and last fetch time`() = runTest {
+        val response = ScryfallSearchResponse(
+            totalCards = 1,
+            hasMore = false,
+            nextPage = null,
+            data = listOf(ScryfallCard("Black Lotus", "{0}", "Artifact", "Text", null, null, null))
+        )
+        coEvery { scryfallService.search("is:gamechanger") } returns response
+        
+        // Use LiveData test observers
+        val listObserver = mockk<androidx.lifecycle.Observer<List<String>>>(relaxed = true)
+        val timeObserver = mockk<androidx.lifecycle.Observer<Long>>(relaxed = true)
+        viewModel.gameChangers.observeForever(listObserver)
+        viewModel.lastGameChangerFetch.observeForever(timeObserver)
+        
+        viewModel.fetchGameChangers()
+        advanceUntilIdle()
+        
+        val list = viewModel.gameChangers.value
+        assertTrue("Expected list to contain Black Lotus but was $list", list?.contains("Black Lotus") == true)
+        
+        verify { listObserver.onChanged(any()) }
+        verify { timeObserver.onChanged(any()) }
+        
+        viewModel.gameChangers.removeObserver(listObserver)
+        viewModel.lastGameChangerFetch.removeObserver(timeObserver)
+    }
+
+    @Test
+    fun `processDeck handles Scryfall not_found response`() = runTest {
+        val input = "1 Real Card\n1 Fake Card"
+        
+        coEvery { cardDao.getCards(any()) } returns emptyList()
+        coEvery { scryfallService.getCollection(any()) } returns ScryfallCollectionResponse(
+            data = listOf(ScryfallCard("Real Card", "{G}", "Creature", "Text", "1", "1", null)),
+            notFound = listOf(com.mtgllm.plugin.api.CardIdentifier("Fake Card"))
+        )
+
+        viewModel.processDeck(input, "Partial Test", false, true, false)
+        advanceUntilIdle()
+        
+        val finalState = viewModel.state.value
+        assertTrue(finalState is DeckProcessState.Success)
+        val successState = finalState as DeckProcessState.Success
+        assertEquals(listOf("Fake Card"), successState.failedCards)
     }
 
     @After

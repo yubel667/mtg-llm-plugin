@@ -228,6 +228,13 @@
                             android:text="Maybeboard" />
                     </LinearLayout>
 
+                    <com.google.android.material.checkbox.MaterialCheckBox
+                        android:id="@+id/gameChangersCheckBox"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="false"
+                        android:text="Append Commander Game Changers" />
+
                     <Button
                         android:id="@+id/processButton"
                         android:layout_width="match_parent"

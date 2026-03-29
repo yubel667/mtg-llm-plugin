@@ -2,7 +2,9 @@ package com.mtgllm.plugin.api
 
 import com.google.gson.annotations.SerializedName
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Query
 
 data class ScryfallCollectionRequest(
     val identifiers: List<CardIdentifier>
@@ -36,7 +38,17 @@ data class CardFace(
     val toughness: String?
 )
 
+data class ScryfallSearchResponse(
+    @SerializedName("total_cards") val totalCards: Int,
+    @SerializedName("has_more") val hasMore: Boolean,
+    @SerializedName("next_page") val nextPage: String?,
+    val data: List<ScryfallCard>
+)
+
 interface ScryfallService {
+    @GET("cards/search")
+    suspend fun search(@Query("q") query: String): ScryfallSearchResponse
+
     @POST("cards/collection")
     suspend fun getCollection(@Body request: ScryfallCollectionRequest): ScryfallCollectionResponse
 }

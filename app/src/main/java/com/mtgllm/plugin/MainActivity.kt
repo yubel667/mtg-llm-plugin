@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -20,6 +21,16 @@ class MainActivity : AppCompatActivity() {
 
     private val saveFileLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
         uri?.let { viewModel.saveFileToUri(this, it) }
+    }
+
+    private val historyLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val input = result.data?.getStringExtra("reprocess_input")
+            val name = result.data?.getStringExtra("reprocess_name")
+            if (input != null) {
+                prepareForConversion(input, name)
+            }
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -74,7 +85,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.historyButton.setOnClickListener {
-            startActivity(Intent(this, HistoryActivity::class.java))
+            historyLauncher.launch(Intent(this, HistoryActivity::class.java))
         }
 
         binding.optionsButton.setOnClickListener {
@@ -227,7 +238,23 @@ class MainActivity : AppCompatActivity() {
             val useTimestamp = binding.timestampCheckBox.isChecked
             val includeSideboard = binding.sideboardCheckBox.isChecked
             val includeMaybeboard = binding.mayboardCheckBox.isChecked
+            val includeGameChangers = binding.gameChangersCheckBox.isChecked
             
+            if (includeGameChangers && (viewModel.gameChangers.value?.isEmpty() != false)) {
+                MaterialAlertDialogBuilder(this)
+                    .setTitle("Commander Game Changers")
+                    .setMessage("The 'Game Changers' list is a set of high-impact cards identified by Wizards of the Coast. Appending this list helps LLMs analyze your deck's power level.\n\nYou haven't fetched this list yet. Would you like to fetch it now from Scryfall?")
+                    .setPositiveButton("Fetch Now") { _, _ ->
+                        viewModel.fetchGameChangers()
+                    }
+                    .setNeutralButton("Options") { _, _ ->
+                        startActivity(Intent(this, OptionsActivity::class.java))
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+                return@setOnClickListener
+            }
+
             binding.configCard.visibility = View.GONE
             binding.progressBar.visibility = View.VISIBLE
             binding.resetButton.visibility = View.GONE
@@ -241,7 +268,8 @@ class MainActivity : AppCompatActivity() {
                 if (finalName.isNotEmpty()) finalName else null, 
                 useTimestamp,
                 includeSideboard,
-                includeMaybeboard
+                includeMaybeboard,
+                includeGameChangers
             )
         }
     }
@@ -257,7 +285,10 @@ class MainActivity : AppCompatActivity() {
         viewModel.state.observe(this) { state ->
             when (state) {
                 is DeckProcessState.Idle -> {
-                    // Handled by resetUI
+                    // Check if we just finished fetching game changers
+                    if (binding.gameChangersCheckBox.isChecked && viewModel.gameChangers.value?.isNotEmpty() == true && binding.configCard.visibility == View.VISIBLE) {
+                        Toast.makeText(this, "Game Changers list fetched!", Toast.LENGTH_SHORT).show()
+                    }
                 }
                 is DeckProcessState.Processing -> {
                     binding.statusContainer.visibility = View.VISIBLE

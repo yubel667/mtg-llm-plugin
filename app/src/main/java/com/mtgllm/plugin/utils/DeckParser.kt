@@ -8,8 +8,13 @@ data class ParsedCard(val quantity: Int, val name: String, val section: CardSect
 data class DeckInfo(val name: String, val cards: List<ParsedCard>, val rawText: String)
 
 object DeckParser {
-    // Regex matches formats like "1 Sol Ring", "4x Lightning Bolt", "1 Arcane Signet (CLB) 298"
-    private val LINE_PATTERN = Regex("""^(\d+)[xX]?\s+(.+?)(?:\s+\([A-Z0-9]{3,4}\)\s+\d+)?$""")
+    // Matches: 
+    // "1 Sol Ring"
+    // "4x Lightning Bolt"
+    // "1 Arcane Signet (CLB) 298"
+    // "Sol Ring" (quantity defaults to 1) - but must start with a word character or quote
+    // Supports trailing comments like # or *
+    private val LINE_PATTERN = Regex("""^(?:(\d+)[xX]?\s+)?([a-zA-Z0-9"].+?)(?:\s+\([A-Z0-9]{3,4}\)(?:\s+\d+)?)?(?:\s*[#*].*)?$""")
 
     fun parse(input: String, defaultName: String? = null): DeckInfo {
         if (input.contains("moxfield.com/decks/")) {
@@ -40,7 +45,6 @@ object DeckParser {
             cards.add(ParsedCard(it.quantity, it.card.name, CardSection.MAYBOARD))
         }
 
-        // Create a raw text representation for the output
         val rawText = buildString {
             if (!response.commanders.isNullOrEmpty()) {
                 append("Commanders:\n")
@@ -64,7 +68,6 @@ object DeckParser {
             }
         }
 
-        // Use first commander name as deck name if available
         val defaultName = response.commanders?.values?.firstOrNull()?.card?.name ?: response.name
         return DeckInfo(defaultName, cards, rawText)
     }
@@ -75,45 +78,50 @@ object DeckParser {
         
         text.lines().forEach { line ->
             val trimmed = line.trim()
+            if (trimmed.isEmpty()) return@forEach
+            
             val upper = trimmed.uppercase()
             
-            // Check for section headers first
-            // We use simple "contains" but only if the line doesn't match a card pattern
-            val isCard = LINE_PATTERN.matches(trimmed)
-            
-            if (!isCard) {
-                when {
-                    upper.contains("SIDEBOARD") -> currentSection = CardSection.SIDEBOARD
-                    upper.contains("MAYBEBOARD") || upper.contains("MAYBOARD") || upper.contains("CONSIDERING") -> currentSection = CardSection.MAYBOARD
-                    upper.contains("COMMANDER") -> currentSection = CardSection.COMMANDER
-                    trimmed.startsWith("[") && trimmed.endsWith("]") -> currentSection = CardSection.MAIN
-                    trimmed.endsWith(":") -> currentSection = CardSection.MAIN
-                    // Common category names
-                    upper == "CREATURES" || upper == "ARTIFACTS" || upper == "INSTANTS" || 
-                    upper == "SORCERIES" || upper == "ENCHANTMENTS" || upper == "LANDS" || 
-                    upper == "PLANESWALKERS" -> currentSection = CardSection.MAIN
+            // Check for section headers - Order matters! Check Maybeboard before Sideboard.
+            val isHeader = when {
+                upper.contains("MAYBEBOARD") || upper.contains("MAYBOARD") || upper.contains("CONSIDERING") -> { currentSection = CardSection.MAYBOARD; true }
+                upper.contains("SIDEBOARD") -> { currentSection = CardSection.SIDEBOARD; true }
+                upper.contains("COMMANDER") -> { currentSection = CardSection.COMMANDER; true }
+                trimmed.startsWith("[") && trimmed.endsWith("]") -> { currentSection = CardSection.MAIN; true }
+                trimmed.startsWith("---") && trimmed.endsWith("---") -> { true }
+                trimmed.endsWith(":") -> {
+                    if (upper != "SIDEBOARD:" && upper != "MAYBEBOARD:" && upper != "COMMANDER:") {
+                        currentSection = CardSection.MAIN
+                    }
+                    true
                 }
+                upper.startsWith("MAINBOARD") || upper.startsWith("CREATURES") || upper.startsWith("ARTIFACTS") || 
+                upper.startsWith("INSTANTS") || upper.startsWith("SORCERIES") || upper.startsWith("ENCHANTMENTS") || 
+                upper.startsWith("LANDS") || upper.startsWith("PLANESWALKERS") || upper == "DECK" -> { 
+                    currentSection = CardSection.MAIN
+                    true 
+                }
+                else -> false
             }
             
-            if (isCard) {
+            if (!isHeader) {
                 val lineMatch = LINE_PATTERN.find(trimmed)
                 if (lineMatch != null) {
                     val quantity = lineMatch.groupValues[1].toIntOrNull() ?: 1
                     var name = lineMatch.groupValues[2].trim()
 
-                        // Normalize double sided cards: "Card A / Card B" or "CardA/CardB" -> "Card A // Card B"
-                        if (name.contains("/") && !name.contains("//")) {
-                            val parts = name.split("/")
-                            if (parts.size == 2) {
-                                name = "${parts[0].trim()} // ${parts[1].trim()}"
-                            }
+                    // Normalize double sided cards
+                    if (name.contains("/") && !name.contains("//")) {
+                        val parts = name.split("/")
+                        if (parts.size == 2) {
+                            name = "${parts[0].trim()} // ${parts[1].trim()}"
                         }
+                    }
 
                     if (name.isNotEmpty()) {
                         cards.add(ParsedCard(quantity, name, currentSection))
                     }
                 }
-
             }
         }
         
@@ -132,7 +140,6 @@ object DeckParser {
             
             val title = doc.title().replace(" - ManaBox", "").replace(" - Moxfield", "").split("@").first().trim()
             
-            // If it's MTGTop8, fetch the MTGO export text
             val bodyText = if (url.contains("mtgtop8.com/")) {
                 val deckId = Regex("""d=(\d+)""").find(url)?.groupValues?.get(1)
                 if (deckId != null) {

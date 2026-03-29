@@ -53,50 +53,14 @@
                 app:tint="?attr/colorError" />
         </RelativeLayout>
 
-        <LinearLayout
+        <Button
+            android:id="@+id/reprocessRecordButton"
+            style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:text="Load &amp; Re-parse Deck"
+            app:icon="@android:drawable/stat_notify_sync" />
 
-            <Button
-                android:id="@+id/previewRecordButton"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Preview"
-                android:textSize="11sp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                app:icon="@drawable/ic_help" />
-
-            <Button
-                android:id="@+id/shareRecordButton"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="4dp"
-                android:text="Share"
-                android:textSize="11sp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                app:icon="@drawable/ic_content_paste" />
-
-            <Button
-                android:id="@+id/saveRecordButton"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="4dp"
-                android:text="Save"
-                android:textSize="11sp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                app:icon="@drawable/ic_add" />
-        </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

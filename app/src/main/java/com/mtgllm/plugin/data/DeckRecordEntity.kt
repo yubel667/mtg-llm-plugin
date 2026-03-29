@@ -10,5 +10,6 @@ data class DeckRecordEntity(
     val timestamp: Long,
     val fileName: String,
     val cardCount: Int,
-    val resultText: String
+    val resultText: String,
+    val rawInput: String = "" // Added to allow re-processing
 )
