@@ -9,8 +9,10 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class HistoryAdapter(
+    private val onPreview: (DeckRecordEntity) -> Unit,
     private val onShare: (DeckRecordEntity) -> Unit,
-    private val onPreview: (DeckRecordEntity) -> Unit
+    private val onSave: (DeckRecordEntity) -> Unit,
+    private val onDelete: (DeckRecordEntity) -> Unit
 ) : RecyclerView.Adapter<HistoryAdapter.ViewHolder>() {
 
     private var items = listOf<DeckRecordEntity>()
@@ -34,8 +36,10 @@ class HistoryAdapter(
         holder.binding.deckNameTextView.text = item.name
         holder.binding.deckDetailsTextView.text = "$date • ${item.cardCount} cards"
         
-        holder.binding.shareRecordButton.setOnClickListener { onShare(item) }
         holder.binding.previewRecordButton.setOnClickListener { onPreview(item) }
+        holder.binding.shareRecordButton.setOnClickListener { onShare(item) }
+        holder.binding.saveRecordButton.setOnClickListener { onSave(item) }
+        holder.binding.deleteRecordButton.setOnClickListener { onDelete(item) }
     }
 
     override fun getItemCount() = items.size

@@ -12,6 +12,9 @@ interface DeckRecordDao {
     @Insert
     suspend fun insertRecord(record: DeckRecordEntity)
 
+    @Query("DELETE FROM deck_records WHERE id = :id")
+    suspend fun deleteRecord(id: Long)
+
     @Query("DELETE FROM deck_records WHERE id NOT IN (SELECT id FROM deck_records ORDER BY timestamp DESC LIMIT :limit)")
     suspend fun trimRecords(limit: Int)
 

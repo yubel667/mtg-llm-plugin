@@ -75,8 +75,12 @@ class DeckViewModel @JvmOverloads constructor(
         set(value) = prefs.edit().putBoolean("auto_share", value).apply()
 
     var historyLimit: Int
-        get() = prefs.getInt("history_limit", 10)
+        get() = prefs.getInt("history_limit", 100)
         set(value) = prefs.edit().putInt("history_limit", value).apply()
+
+    var askBeforeDeleteEnabled: Boolean
+        get() = prefs.getBoolean("ask_before_delete", true)
+        set(value) = prefs.edit().putBoolean("ask_before_delete", value).apply()
 
     init {
         refreshStats()
@@ -89,9 +93,21 @@ class DeckViewModel @JvmOverloads constructor(
         }
     }
 
-    fun loadHistory() {
+    fun loadHistory(query: String = "") {
         viewModelScope.launch {
-            _history.value = withContext(ioDispatcher) { realDeckRecordDao.getAllRecords() }
+            val allRecords = withContext(ioDispatcher) { realDeckRecordDao.getAllRecords() }
+            if (query.isEmpty()) {
+                _history.value = allRecords
+            } else {
+                _history.value = allRecords.filter { it.name.contains(query, ignoreCase = true) }
+            }
+        }
+    }
+
+    fun deleteRecord(record: DeckRecordEntity) {
+        viewModelScope.launch {
+            withContext(ioDispatcher) { realDeckRecordDao.deleteRecord(record.id) }
+            loadHistory()
         }
     }
 
@@ -397,6 +413,18 @@ class DeckViewModel @JvmOverloads constructor(
                 }
             } catch (e: Exception) {
                 Log.e("DeckViewModel", "Error saving file to URI", e)
+            }
+        }
+    }
+
+    fun saveRecordToUri(context: Context, record: DeckRecordEntity, uri: android.net.Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                context.contentResolver.openOutputStream(uri)?.use { output ->
+                    output.write(record.resultText.toByteArray())
+                }
+            } catch (e: Exception) {
+                Log.e("DeckViewModel", "Error saving record to URI", e)
             }
         }
     }

@@ -19,6 +19,7 @@ class OptionsActivity : AppCompatActivity() {
 
         // Setup Initial Values
         binding.autoShareCheckBox.isChecked = viewModel.autoShareEnabled
+        binding.askBeforeDeleteCheckBox.isChecked = viewModel.askBeforeDeleteEnabled
         binding.historyLimitEditText.setText(viewModel.historyLimit.toString())
 
         viewModel.cachedCardCount.observe(this) { count ->
@@ -28,7 +29,8 @@ class OptionsActivity : AppCompatActivity() {
         // Listeners
         binding.saveSettingsButton.setOnClickListener {
             viewModel.autoShareEnabled = binding.autoShareCheckBox.isChecked
-            val limit = binding.historyLimitEditText.text.toString().toIntOrNull() ?: 10
+            viewModel.askBeforeDeleteEnabled = binding.askBeforeDeleteCheckBox.isChecked
+            val limit = binding.historyLimitEditText.text.toString().toIntOrNull() ?: 100
             viewModel.historyLimit = limit
             Toast.makeText(this, "Settings saved", Toast.LENGTH_SHORT).show()
         }

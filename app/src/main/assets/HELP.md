@@ -29,6 +29,17 @@ Supported sites: **Moxfield**, **MTGTop8**.
 
 ---
 
+## 🕒 History & Management
+
+*   **Past Decks**: Tap the **Clock** icon in the toolbar to see your last processed decks. You can search by name, quickly re-share them, or save them to your local storage again.
+*   **Options & Stats**: Tap the **Gear** icon to customize your experience:
+    *   **Auto-share**: Enable or disable the automatic share menu.
+    *   **History Limit**: Control how many past decks are kept (default is 100).
+    *   **Cache Stats**: See how many cards are stored in your local database.
+    *   **Cleanup**: Buttons to clear your card cache or wipe your history.
+
+---
+
 ## 📄 Output Format
 The app generates a single `.txt` file with:
 1.  **Deck Info**: Name, card counts, and generation date.
