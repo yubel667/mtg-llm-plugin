@@ -22,26 +22,46 @@ class MainActivity : AppCompatActivity() {
             resetUI()
         }
 
+        binding.loadMoxfieldButton.setOnClickListener {
+            val url = binding.moxfieldUrlEditText.text.toString().trim()
+            if (url.isNotEmpty()) {
+                viewModel.fetchMoxfieldDeck(url)
+            } else {
+                showError("Please enter a Moxfield URL")
+            }
+        }
+
         setupObservers()
         handleIntent(intent)
     }
 
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        intent?.let { handleIntent(it) }
+    }
+
     private fun resetUI() {
-        binding.configLayout.visibility = View.GONE
+        binding.configScrollView.visibility = View.GONE
         binding.progressLayout.visibility = View.VISIBLE
         binding.progressBar.visibility = View.GONE
         binding.statusTextView.text = "Waiting for decklist..."
         binding.messageTextView.text = ""
         binding.resetButton.visibility = View.GONE
+        binding.moxfieldUrlEditText.text?.clear()
     }
 
     private fun handleIntent(intent: Intent) {
         if (Intent.ACTION_SEND == intent.action) {
             binding.statusTextView.text = "Receiving share..."
             
-            // Case 1: Shared as raw text
+            // Check if it's a Moxfield URL being shared
             intent.getStringExtra(Intent.EXTRA_TEXT)?.let { sharedText ->
-                prepareForConversion(sharedText)
+                if (sharedText.contains("moxfield.com/decks/")) {
+                    binding.moxfieldUrlEditText.setText(sharedText)
+                    viewModel.fetchMoxfieldDeck(sharedText)
+                    return
+                }
+                prepareForConversion(sharedText, null)
                 return
             }
 
@@ -56,9 +76,10 @@ class MainActivity : AppCompatActivity() {
             uri?.let { 
                 try {
                     binding.statusTextView.text = "Reading file..."
+                    val fileName = getFileName(it)
                     val content = contentResolver.openInputStream(it)?.bufferedReader()?.use { reader -> reader.readText() }
                     if (content != null) {
-                        prepareForConversion(content)
+                        prepareForConversion(content, fileName?.substringBeforeLast("."))
                     } else {
                         showError("File is empty or could not be read.")
                     }
@@ -72,41 +93,80 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun getFileName(uri: android.net.Uri): String? {
+        var result: String? = null
+        if (uri.scheme == "content") {
+            val cursor = contentResolver.query(uri, null, null, null, null)
+            cursor?.use {
+                if (it.moveToFirst()) {
+                    val index = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (index != -1) result = it.getString(index)
+                }
+            }
+        }
+        if (result == null) {
+            result = uri.path
+            val cut = result?.lastIndexOf('/') ?: -1
+            if (cut != -1) result = result?.substring(cut + 1)
+        }
+        return result
+    }
+
     private fun showError(message: String) {
-        binding.configLayout.visibility = View.GONE
+        binding.configScrollView.visibility = View.GONE
         binding.progressLayout.visibility = View.VISIBLE
         binding.statusTextView.text = "Error"
         binding.messageTextView.text = message
         binding.resetButton.visibility = View.VISIBLE
     }
 
-    private fun prepareForConversion(text: String) {
+    private fun prepareForConversion(text: String, defaultName: String?) {
         lastReceivedText = text
         binding.statusTextView.text = "Analyzing list..."
         
-        val deckInfo = com.mtgllm.plugin.utils.DeckParser.parse(text)
-        
-        binding.configLayout.visibility = View.VISIBLE
+        val deckInfo = com.mtgllm.plugin.utils.DeckParser.parse(text, defaultName)
+        showConfig(deckInfo)
+    }
+
+    private fun showConfig(deckInfo: com.mtgllm.plugin.utils.DeckInfo) {
+        binding.configScrollView.visibility = View.VISIBLE
         binding.progressLayout.visibility = View.GONE
         binding.deckNameEditText.setText(deckInfo.name)
         
         binding.processButton.setOnClickListener {
             val finalName = binding.deckNameEditText.text.toString().trim()
             val useTimestamp = binding.timestampCheckBox.isChecked
+            val includeSideboard = binding.sideboardCheckBox.isChecked
+            val includeMayboard = binding.mayboardCheckBox.isChecked
             
-            binding.configLayout.visibility = View.GONE
+            binding.configScrollView.visibility = View.GONE
             binding.progressLayout.visibility = View.VISIBLE
             binding.resetButton.visibility = View.GONE
             
-            viewModel.processDeck(text, if (finalName.isNotEmpty()) finalName else null, useTimestamp)
+            val textToProcess = lastReceivedText ?: deckInfo.rawText
+            
+            viewModel.processDeck(
+                textToProcess, 
+                if (finalName.isNotEmpty()) finalName else null, 
+                useTimestamp,
+                includeSideboard,
+                includeMayboard
+            )
         }
     }
 
     private fun setupObservers() {
+        viewModel.moxfieldDeck.observe(this) { deckInfo ->
+            deckInfo?.let {
+                lastReceivedText = it.rawText
+                showConfig(it)
+            }
+        }
+
         viewModel.state.observe(this) { state ->
             when (state) {
                 is DeckProcessState.Idle -> {
-                    // Handled by resetUI/prepare
+                    // Ready
                 }
                 is DeckProcessState.Processing -> {
                     binding.progressBar.visibility = View.VISIBLE
@@ -126,6 +186,7 @@ class MainActivity : AppCompatActivity() {
                     binding.statusTextView.text = "Error"
                     binding.messageTextView.text = state.message
                     binding.resetButton.visibility = View.VISIBLE
+                    binding.configScrollView.visibility = View.GONE
                 }
             }
         }

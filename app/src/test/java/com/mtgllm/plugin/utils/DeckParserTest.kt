@@ -1,6 +1,7 @@
 package com.mtgllm.plugin.utils
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DeckParserTest {
@@ -18,6 +19,42 @@ class DeckParserTest {
         assertEquals("Sol Ring", result.name) // First card name
         assertEquals(3, result.cards.size)
         assertEquals(input, result.rawText)
+    }
+
+    @Test
+    fun `parse decklist with sections`() {
+        val input = """
+            1 Sol Ring
+            [SIDEBOARD]
+            1 Lightning Bolt
+            MAYBOARD:
+            1 Arcane Signet
+        """.trimIndent()
+
+        val result = DeckParser.parse(input)
+        assertEquals(3, result.cards.size)
+        assertEquals(CardSection.MAIN, result.cards[0].section)
+        assertEquals(CardSection.SIDEBOARD, result.cards[1].section)
+        assertEquals(CardSection.MAYBOARD, result.cards[2].section)
+    }
+
+    @Test
+    fun `parseMoxfieldResponse includes commanders`() {
+        val response = com.mtgllm.plugin.api.MoxfieldDeckResponse(
+            name = "My Deck",
+            commanders = mapOf("1" to com.mtgllm.plugin.api.MoxfieldCard(1, com.mtgllm.plugin.api.MoxfieldCardDetails("Urza, Lord High Artificer"))),
+            companions = null,
+            mainboard = mapOf("2" to com.mtgllm.plugin.api.MoxfieldCard(1, com.mtgllm.plugin.api.MoxfieldCardDetails("Island"))),
+            sideboard = null,
+            maybeboard = null
+        )
+
+        val result = DeckParser.parseMoxfieldResponse(response)
+        
+        assertEquals("Urza, Lord High Artificer", result.name)
+        assertEquals(2, result.cards.size)
+        assertEquals(CardSection.COMMANDER, result.cards[0].section)
+        assertTrue(result.rawText.contains("Commanders:"))
     }
 
     @Test

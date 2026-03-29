@@ -30,4 +30,13 @@ object RetrofitClient {
             .build()
             .create(ScryfallService::class.java)
     }
+
+    val moxfieldService: MoxfieldService by lazy {
+        Retrofit.Builder()
+            .baseUrl("https://api2.moxfield.com/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .client(client)
+            .build()
+            .create(MoxfieldService::class.java)
+    }
 }

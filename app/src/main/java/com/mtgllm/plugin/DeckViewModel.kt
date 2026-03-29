@@ -34,27 +34,74 @@ class DeckViewModel @JvmOverloads constructor(
     application: Application,
     private val cardDao: com.mtgllm.plugin.data.CardDao? = null,
     private val scryfallService: com.mtgllm.plugin.api.ScryfallService? = null,
+    private val moxfieldService: com.mtgllm.plugin.api.MoxfieldService? = null,
     private val ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = kotlinx.coroutines.Dispatchers.IO
 ) : AndroidViewModel(application) {
 
     private val realCardDao = cardDao ?: CardDatabase.getDatabase(application).cardDao()
     private val realScryfallService = scryfallService ?: RetrofitClient.scryfallService
+    private val realMoxfieldService = moxfieldService ?: RetrofitClient.moxfieldService
 
     private val _state = MutableLiveData<DeckProcessState>(DeckProcessState.Idle)
     val state: LiveData<DeckProcessState> = _state
 
-    fun processDeck(input: String, customName: String? = null, appendTimestamp: Boolean = true) {
+    private val _moxfieldDeck = MutableLiveData<DeckInfo?>(null)
+    val moxfieldDeck: LiveData<DeckInfo?> = _moxfieldDeck
+
+    fun fetchMoxfieldDeck(url: String) {
+        val deckId = extractMoxfieldId(url)
+        if (deckId == null) {
+            _state.value = DeckProcessState.Error("Invalid Moxfield URL")
+            return
+        }
+
+        viewModelScope.launch {
+            _state.value = DeckProcessState.Processing(0, "Fetching from Moxfield...")
+            try {
+                val response = withContext(ioDispatcher) { realMoxfieldService.getDeck(deckId) }
+                val deckInfo = DeckParser.parseMoxfieldResponse(response)
+                _moxfieldDeck.value = deckInfo
+                _state.value = DeckProcessState.Idle // Ready for user configuration
+            } catch (e: Exception) {
+                Log.e("DeckViewModel", "Error fetching Moxfield deck", e)
+                _state.value = DeckProcessState.Error("Moxfield API Error: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    private fun extractMoxfieldId(url: String): String? {
+        // Example: https://www.moxfield.com/decks/hyRL_mx_YE6
+        val regex = Regex("moxfield.com/decks/([^/?#]+)")
+        return regex.find(url)?.groupValues?.get(1)
+    }
+
+    fun processDeck(
+        input: String,
+        customName: String? = null,
+        appendTimestamp: Boolean = true,
+        includeSideboard: Boolean = true,
+        includeMayboard: Boolean = false
+    ) {
         viewModelScope.launch {
             _state.value = DeckProcessState.Processing(0, "Parsing deck...")
             
-            val deckInfo = withContext(ioDispatcher) { DeckParser.parse(input) }
+            val deckInfo = withContext(ioDispatcher) { DeckParser.parse(input, customName) }
             if (deckInfo.cards.isEmpty()) {
                 _state.value = DeckProcessState.Error("No valid cards found in the input.")
                 return@launch
             }
 
+            val filteredCards = deckInfo.cards.filter { 
+                when(it.section) {
+                    com.mtgllm.plugin.utils.CardSection.COMMANDER -> true
+                    com.mtgllm.plugin.utils.CardSection.MAIN -> true
+                    com.mtgllm.plugin.utils.CardSection.SIDEBOARD -> includeSideboard
+                    com.mtgllm.plugin.utils.CardSection.MAYBOARD -> includeMayboard
+                }
+            }
+
             val deckName = customName ?: deckInfo.name
-            val cardNames = deckInfo.cards.map { it.name }.distinct()
+            val cardNames = filteredCards.map { it.name }.distinct()
             val oracleTexts = mutableMapOf<String, String>()
 
             // 1. Check Cache
@@ -93,7 +140,7 @@ class DeckViewModel @JvmOverloads constructor(
             // 3. Generate File
             _state.value = DeckProcessState.Processing(90, "Generating Oracle text file...")
             val resultFile = withContext(ioDispatcher) {
-                generateResultFile(deckInfo, deckName, appendTimestamp, oracleTexts)
+                generateResultFile(deckInfo.rawText, filteredCards, deckName, appendTimestamp, oracleTexts)
             }
 
             if (resultFile != null) {
@@ -120,20 +167,28 @@ class DeckViewModel @JvmOverloads constructor(
     }
 
     private fun generateResultFile(
-        deckInfo: DeckInfo,
+        rawText: String,
+        cards: List<com.mtgllm.plugin.utils.ParsedCard>,
         deckName: String,
         appendTimestamp: Boolean,
         oracleTexts: Map<String, String>
     ): File? {
         return try {
+            val totalCards = cards.sumOf { it.quantity }
+            val uniqueCards = cards.size
+
             val content = buildString {
-                append("=== ORIGINAL DECKLIST ===\n\n")
-                append(deckInfo.rawText)
-                append("\n\n=== ORACLE TEXT APPENDED BELOW ===\n\n")
+                append("=== DECK INFO ===\n")
+                append("Name: $deckName\n")
+                append("Total cards dumped: $totalCards ($uniqueCards unique)\n")
                 append("Generated on: ${Date()}\n\n")
 
-                for (card in deckInfo.cards) {
-                    append("${card.quantity}x ${card.name}\n")
+                append("=== ORIGINAL DECKLIST ===\n\n")
+                append(rawText)
+                append("\n\n=== ORACLE TEXT APPENDED BELOW ===\n\n")
+
+                for (card in cards) {
+                    append("[${card.section}] ${card.quantity}x ${card.name}\n")
                     append(oracleTexts[card.name] ?: "Oracle text not found.")
                     append("\n\n--------------------------------\n\n")
                 }
