@@ -2,36 +2,31 @@
 
 This guide describes how to build and install the **MTG Deck to Oracle** utility on your Android device.
 
-## Prerequisites
+## 📋 Prerequisites
 
-1.  **Android Studio:** [Download and install](https://developer.android.com/studio) the latest version.
-2.  **Internet Connection:** Required for downloading Gradle dependencies and fetching card data from Scryfall.
-3.  **USB Cable:** To connect your Pixel to your computer.
+1.  **Android Studio:** Latest version (Jellyfish or newer recommended).
+2.  **JDK 17:** Ensure your Android Studio is configured to use JDK 17 for Gradle.
+3.  **Internet Connection:** Required for dependencies and API data.
+4.  **USB Cable:** For connecting your device to your computer.
 
-## Step 1: Prepare your Android Device
+## ⚙️ Step 1: Prepare your Device
 
-1.  Open **Settings** on your phone.
-2.  Go to **About phone**.
-3.  Scroll to the bottom and tap **Build number** 7 times until you see "You are now a developer!".
-4.  Go back to **Settings > System > Developer options**.
-5.  Enable **USB debugging**.
+1.  Enable **Developer Options** on your phone (Tap "Build number" 7 times in Settings > About phone).
+2.  Go to **Settings > System > Developer options** and enable **USB debugging**.
+3.  Connect your phone to your computer.
 
-## Step 2: Open and Configure the Project
+## 🏗️ Step 2: Build and Install
 
 1.  Launch **Android Studio**.
-2.  Select **Open** and choose the `/Users/yiwei/code/mtg-llm-plugin` directory.
-3.  Wait for Gradle to sync. This may take a few minutes as it downloads Room, Retrofit, and other dependencies.
+2.  Select **Open** and choose the project directory.
+3.  Wait for **Gradle Sync** to finish (it will download Room, Retrofit, Markwon, etc.).
+4.  Select your device in the top toolbar.
+5.  Click the **Run** button (green play icon).
 
-## Step 3: Build and Install
+## 🧪 How to Test
 
-1.  Connect your phone to your computer via USB.
-2.  In the toolbar, select your device from the target device dropdown.
-3.  Click the **Run** button (green play icon).
-4.  The app will build and install on your phone.
-
-## How to Test
-
-1.  Open **Moxfield** or **Mana Box** on your phone.
-2.  Select a deck and tap **Share** (usually as text or via the system share menu).
-3.  Select **MTG Deck to Oracle** from the list of apps.
-4.  Watch the progress bar. Once finished, a new share menu will appear allowing you to send the generated `.txt` file to your LLM of choice.
+1.  Open **Moxfield** in your browser and copy a deck URL.
+2.  Open **MTG Deck to Oracle** and tap **Paste**.
+3.  Tap **Load Deck** and verify the configuration appears.
+4.  Alternatively, open **Mana Box**, tap a deck, then **Share > File** and choose this app.
+5.  Check the generated `.txt` file—it should contain your list followed by full Oracle texts!

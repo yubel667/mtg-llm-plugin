@@ -9,12 +9,19 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.mtgllm.plugin.api.CardIdentifier
+import com.mtgllm.plugin.api.MoxfieldService
 import com.mtgllm.plugin.api.RetrofitClient
+import com.mtgllm.plugin.api.ScryfallCard
 import com.mtgllm.plugin.api.ScryfallCollectionRequest
+import com.mtgllm.plugin.api.ScryfallService
+import com.mtgllm.plugin.data.CardDao
 import com.mtgllm.plugin.data.CardDatabase
 import com.mtgllm.plugin.data.CardEntity
+import com.mtgllm.plugin.utils.CardSection
 import com.mtgllm.plugin.utils.DeckInfo
 import com.mtgllm.plugin.utils.DeckParser
+import com.mtgllm.plugin.utils.ParsedCard
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -32,10 +39,10 @@ sealed class DeckProcessState {
 
 class DeckViewModel @JvmOverloads constructor(
     application: Application,
-    private val cardDao: com.mtgllm.plugin.data.CardDao? = null,
-    private val scryfallService: com.mtgllm.plugin.api.ScryfallService? = null,
-    private val moxfieldService: com.mtgllm.plugin.api.MoxfieldService? = null,
-    private val ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = kotlinx.coroutines.Dispatchers.IO
+    private val cardDao: CardDao? = null,
+    private val scryfallService: ScryfallService? = null,
+    private val moxfieldService: MoxfieldService? = null,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : AndroidViewModel(application) {
 
     private val realCardDao = cardDao ?: CardDatabase.getDatabase(application).cardDao()
@@ -107,7 +114,7 @@ class DeckViewModel @JvmOverloads constructor(
         customName: String? = null,
         appendTimestamp: Boolean = true,
         includeSideboard: Boolean = true,
-        includeMayboard: Boolean = false
+        includeMaybeboard: Boolean = false
     ) {
         viewModelScope.launch {
             _state.value = DeckProcessState.Processing(0, "Parsing deck...")
@@ -120,10 +127,10 @@ class DeckViewModel @JvmOverloads constructor(
 
             val filteredCards = deckInfo.cards.filter { 
                 when(it.section) {
-                    com.mtgllm.plugin.utils.CardSection.COMMANDER -> true
-                    com.mtgllm.plugin.utils.CardSection.MAIN -> true
-                    com.mtgllm.plugin.utils.CardSection.SIDEBOARD -> includeSideboard
-                    com.mtgllm.plugin.utils.CardSection.MAYBOARD -> includeMayboard
+                    CardSection.COMMANDER -> true
+                    CardSection.MAIN -> true
+                    CardSection.SIDEBOARD -> includeSideboard
+                    CardSection.MAYBOARD -> includeMaybeboard
                 }
             }
 
@@ -183,8 +190,8 @@ class DeckViewModel @JvmOverloads constructor(
         }
     }
 
-    private suspend fun fetchInBatches(names: List<String>): List<com.mtgllm.plugin.api.ScryfallCard> {
-        val result = mutableListOf<com.mtgllm.plugin.api.ScryfallCard>()
+    private suspend fun fetchInBatches(names: List<String>): List<ScryfallCard> {
+        val result = mutableListOf<ScryfallCard>()
         val chunks = names.chunked(75) // Scryfall batch limit is 75
         for (chunk in chunks) {
             val request = ScryfallCollectionRequest(chunk.map { CardIdentifier(it) })
@@ -196,7 +203,7 @@ class DeckViewModel @JvmOverloads constructor(
 
     private fun generateResultFile(
         rawText: String,
-        cards: List<com.mtgllm.plugin.utils.ParsedCard>,
+        cards: List<ParsedCard>,
         deckName: String,
         appendTimestamp: Boolean,
         oracleTexts: Map<String, String>

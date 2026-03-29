@@ -106,4 +106,37 @@ class DeckParserTest {
         val result = DeckParser.parse(input)
         assertEquals(2, result.cards.size)
     }
+
+    @Test
+    fun `parse Arena format decklist`() {
+        val input = """
+            Deck
+            4 Lightning Bolt (A25) 141
+            1 Sol Ring (C18) 222
+            20 Mountain (UST) 215
+        """.trimIndent()
+
+        val result = DeckParser.parse(input)
+        
+        assertEquals(3, result.cards.size)
+        assertEquals("Lightning Bolt", result.cards[0].name)
+        assertEquals(4, result.cards[0].quantity)
+        assertEquals("Sol Ring", result.cards[1].name)
+        assertEquals("Mountain", result.cards[2].name)
+        assertEquals(20, result.cards[2].quantity)
+    }
+
+    @Test
+    fun `parse empty input`() {
+        val result = DeckParser.parse("")
+        assertEquals(0, result.cards.size)
+        assertEquals("New Deck", result.name)
+    }
+
+    @Test
+    fun `parse random text with no cards`() {
+        val input = "This is just some random text with no cards in it."
+        val result = DeckParser.parse(input)
+        assertEquals(0, result.cards.size)
+    }
 }
