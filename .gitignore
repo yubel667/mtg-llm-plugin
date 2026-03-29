@@ -1,15 +1,49 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
+# Built artifacts
 /build
-/captures
+/*/build
+*.apk
+*.aar
+*.ap_
+*.dex
+*.class
+bin/
+gen/
+out/
+
+# Android Studio / IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+/atlassian-ide-plugin.xml
+.navigation/
+
+# Gradle
+.gradle/
+/local.properties
 .externalNativeBuild
 .cxx
-local.properties
+gradle-app.setting
+*.gradle.bak
+
+# Log files
+*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Captures
+/captures
+
+# Temp files
+*.tmp
+*.temp
+
+# Local generated MTG files
+app/*.txt

@@ -29,15 +29,19 @@ class DeckViewModelTest {
     private val application = mockk<Application>(relaxed = true)
     private val cardDao = mockk<CardDao>(relaxed = true)
     private val scryfallService = mockk<ScryfallService>()
-    private val testDispatcher = StandardTestDispatcher()
-
+    
+    private lateinit var testDispatcher: TestDispatcher
     private lateinit var viewModel: DeckViewModel
 
     @Before
     fun setup() {
+        // Use UnconfinedTestDispatcher to avoid manual advanceUntilIdle in many cases
+        // and ensure the test runs more predictably for simple flows.
+        testDispatcher = UnconfinedTestDispatcher()
         Dispatchers.setMain(testDispatcher)
+        
         every { application.cacheDir } returns File(".")
-        viewModel = DeckViewModel(application, cardDao, scryfallService)
+        viewModel = DeckViewModel(application, cardDao, scryfallService, testDispatcher)
     }
 
     @After
@@ -53,9 +57,10 @@ class DeckViewModelTest {
         coEvery { cardDao.getCards(any()) } returns listOf(cachedCard)
 
         viewModel.processDeck(input)
-        advanceUntilIdle()
-
-        assertTrue(viewModel.state.value is DeckProcessState.Success)
+        
+        val finalState = viewModel.state.value
+        assertTrue("Expected Success state but was $finalState", 
+            finalState is DeckProcessState.Success)
     }
 
     @Test
@@ -68,8 +73,9 @@ class DeckViewModelTest {
         )
 
         viewModel.processDeck(input)
-        advanceUntilIdle()
-
-        assertTrue(viewModel.state.value is DeckProcessState.Success)
+        
+        val finalState = viewModel.state.value
+        assertTrue("Expected Success state but was $finalState", 
+            finalState is DeckProcessState.Success)
     }
 }

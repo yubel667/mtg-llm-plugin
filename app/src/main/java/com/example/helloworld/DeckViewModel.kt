@@ -33,7 +33,8 @@ sealed class DeckProcessState {
 class DeckViewModel(
     application: Application,
     private val cardDao: com.example.helloworld.data.CardDao? = null,
-    private val scryfallService: com.example.helloworld.api.ScryfallService? = null
+    private val scryfallService: com.example.helloworld.api.ScryfallService? = null,
+    private val ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = kotlinx.coroutines.Dispatchers.IO
 ) : AndroidViewModel(application) {
 
     private val realCardDao = cardDao ?: CardDatabase.getDatabase(application).cardDao()
@@ -46,7 +47,7 @@ class DeckViewModel(
         viewModelScope.launch {
             _state.value = DeckProcessState.Processing(0, "Parsing deck...")
             
-            val deckInfo = withContext(Dispatchers.IO) { DeckParser.parse(input) }
+            val deckInfo = withContext(ioDispatcher) { DeckParser.parse(input) }
             if (deckInfo.cards.isEmpty()) {
                 _state.value = DeckProcessState.Error("No valid cards found in the input.")
                 return@launch
@@ -57,7 +58,7 @@ class DeckViewModel(
 
             // 1. Check Cache
             _state.value = DeckProcessState.Processing(10, "Checking local cache...")
-            val cachedCards = withContext(Dispatchers.IO) { realCardDao.getCards(cardNames) }
+            val cachedCards = withContext(ioDispatcher) { realCardDao.getCards(cardNames) }
             for (card in cachedCards) {
                 oracleTexts[card.name] = card.oracleText
             }
@@ -78,7 +79,7 @@ class DeckViewModel(
                     }
                     
                     // Save to cache
-                    withContext(Dispatchers.IO) {
+                    withContext(ioDispatcher) {
                         realCardDao.insertCards(newEntities)
                     }
                 } catch (e: Exception) {
@@ -90,7 +91,7 @@ class DeckViewModel(
 
             // 3. Generate File
             _state.value = DeckProcessState.Processing(90, "Generating Oracle text file...")
-            val resultFile = withContext(Dispatchers.IO) {
+            val resultFile = withContext(ioDispatcher) {
                 generateResultFile(deckInfo, oracleTexts)
             }
 
