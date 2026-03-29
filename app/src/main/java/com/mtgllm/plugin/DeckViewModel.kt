@@ -1,4 +1,4 @@
-package com.example.helloworld
+package com.mtgllm.plugin
 
 import android.app.Application
 import android.content.Intent
@@ -8,13 +8,13 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import com.example.helloworld.api.CardIdentifier
-import com.example.helloworld.api.RetrofitClient
-import com.example.helloworld.api.ScryfallCollectionRequest
-import com.example.helloworld.data.CardDatabase
-import com.example.helloworld.data.CardEntity
-import com.example.helloworld.utils.DeckInfo
-import com.example.helloworld.utils.DeckParser
+import com.mtgllm.plugin.api.CardIdentifier
+import com.mtgllm.plugin.api.RetrofitClient
+import com.mtgllm.plugin.api.ScryfallCollectionRequest
+import com.mtgllm.plugin.data.CardDatabase
+import com.mtgllm.plugin.data.CardEntity
+import com.mtgllm.plugin.utils.DeckInfo
+import com.mtgllm.plugin.utils.DeckParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -32,8 +32,8 @@ sealed class DeckProcessState {
 
 class DeckViewModel(
     application: Application,
-    private val cardDao: com.example.helloworld.data.CardDao? = null,
-    private val scryfallService: com.example.helloworld.api.ScryfallService? = null,
+    private val cardDao: com.mtgllm.plugin.data.CardDao? = null,
+    private val scryfallService: com.mtgllm.plugin.api.ScryfallService? = null,
     private val ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = kotlinx.coroutines.Dispatchers.IO
 ) : AndroidViewModel(application) {
 
@@ -107,8 +107,8 @@ class DeckViewModel(
         }
     }
 
-    private suspend fun fetchInBatches(names: List<String>): List<com.example.helloworld.api.ScryfallCard> {
-        val result = mutableListOf<com.example.helloworld.api.ScryfallCard>()
+    private suspend fun fetchInBatches(names: List<String>): List<com.mtgllm.plugin.api.ScryfallCard> {
+        val result = mutableListOf<com.mtgllm.plugin.api.ScryfallCard>()
         val chunks = names.chunked(75) // Scryfall batch limit is 75
         for (chunk in chunks) {
             val request = ScryfallCollectionRequest(chunk.map { CardIdentifier(it) })

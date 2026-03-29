@@ -1,4 +1,4 @@
-package com.example.helloworld.api
+package com.mtgllm.plugin.api
 
 import com.google.gson.annotations.SerializedName
 import retrofit2.http.Body

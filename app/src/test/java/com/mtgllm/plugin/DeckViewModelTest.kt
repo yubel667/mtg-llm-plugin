@@ -1,12 +1,12 @@
-package com.example.helloworld
+package com.mtgllm.plugin
 
 import android.app.Application
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
-import com.example.helloworld.api.ScryfallCard
-import com.example.helloworld.api.ScryfallCollectionResponse
-import com.example.helloworld.api.ScryfallService
-import com.example.helloworld.data.CardDao
-import com.example.helloworld.data.CardEntity
+import com.mtgllm.plugin.api.ScryfallCard
+import com.mtgllm.plugin.api.ScryfallCollectionResponse
+import com.mtgllm.plugin.api.ScryfallService
+import com.mtgllm.plugin.data.CardDao
+import com.mtgllm.plugin.data.CardEntity
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk

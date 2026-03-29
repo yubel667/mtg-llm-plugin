@@ -1,4 +1,4 @@
-package com.example.helloworld.api
+package com.mtgllm.plugin.api
 
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient

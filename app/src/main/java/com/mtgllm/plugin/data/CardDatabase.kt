@@ -1,4 +1,4 @@
-package com.example.helloworld.data
+package com.mtgllm.plugin.data
 
 import android.content.Context
 import androidx.room.Database

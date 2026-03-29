@@ -1,4 +1,4 @@
-package com.example.helloworld.data
+package com.mtgllm.plugin.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

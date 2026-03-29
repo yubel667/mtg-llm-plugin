@@ -1,4 +1,4 @@
-package com.example.helloworld.utils
+package com.mtgllm.plugin.utils
 
 import org.jsoup.Jsoup
 import java.io.IOException
