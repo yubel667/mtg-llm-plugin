@@ -15,4 +15,10 @@ interface CardDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCards(cards: List<CardEntity>)
+
+    @Query("SELECT COUNT(*) FROM cards")
+    suspend fun getCardCount(): Int
+
+    @Query("DELETE FROM cards")
+    suspend fun clearAll()
 }

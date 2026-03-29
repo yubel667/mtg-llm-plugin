@@ -27,9 +27,6 @@ class MainActivity : AppCompatActivity() {
         setupClickListeners()
         setupObservers()
         handleIntent(intent)
-        
-        binding.autoShareCheckBox.isChecked = viewModel.autoShareEnabled
-        binding.previewTextView.movementMethod = ScrollingMovementMethod()
     }
 
     private fun setupClickListeners() {
@@ -72,8 +69,12 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, HelpActivity::class.java))
         }
 
-        binding.autoShareCheckBox.setOnCheckedChangeListener { _, isChecked ->
-            viewModel.autoShareEnabled = isChecked
+        binding.historyButton.setOnClickListener {
+            startActivity(Intent(this, HistoryActivity::class.java))
+        }
+
+        binding.optionsButton.setOnClickListener {
+            startActivity(Intent(this, OptionsActivity::class.java))
         }
     }
 

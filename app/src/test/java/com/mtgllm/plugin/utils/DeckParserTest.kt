@@ -111,6 +111,36 @@ class DeckParserTest {
     }
 
     @Test
+    fun `parse complex decklist with multiple sections`() {
+        val input = """
+            [COMMANDER]
+            1 Eluge, the Shoreless Sea
+            
+            [CREATURES]
+            1 Baral, Chief of Compliance
+            1 Faerie Mastermind
+            
+            [ARTIFACTS]
+            1 Sol Ring
+            
+            [SIDEBOARD]
+            1 Pulse of the Grid
+            
+            [MAYBEBOARD]
+            1 Chrome Mox
+        """.trimIndent()
+
+        val result = DeckParser.parse(input)
+        
+        assertEquals(CardSection.COMMANDER, result.cards.find { it.name == "Eluge, the Shoreless Sea" }?.section)
+        assertEquals(CardSection.MAIN, result.cards.find { it.name == "Baral, Chief of Compliance" }?.section)
+        assertEquals(CardSection.MAIN, result.cards.find { it.name == "Faerie Mastermind" }?.section)
+        assertEquals(CardSection.MAIN, result.cards.find { it.name == "Sol Ring" }?.section)
+        assertEquals(CardSection.SIDEBOARD, result.cards.find { it.name == "Pulse of the Grid" }?.section)
+        assertEquals(CardSection.MAYBOARD, result.cards.find { it.name == "Chrome Mox" }?.section)
+    }
+
+    @Test
     fun `parse decklist with empty lines`() {
         val input = """
             

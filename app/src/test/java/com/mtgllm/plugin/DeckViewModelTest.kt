@@ -33,6 +33,7 @@ class DeckViewModelTest {
 
     private val application = mockk<Application>(relaxed = true)
     private val cardDao = mockk<CardDao>(relaxed = true)
+    private val deckRecordDao = mockk<com.mtgllm.plugin.data.DeckRecordDao>(relaxed = true)
     private val scryfallService = mockk<ScryfallService>()
     private val moxfieldService = mockk<MoxfieldService>()
     
@@ -49,7 +50,7 @@ class DeckViewModelTest {
         Dispatchers.setMain(testDispatcher)
         
         every { application.cacheDir } returns File(".")
-        viewModel = DeckViewModel(application, cardDao, scryfallService, moxfieldService, testDispatcher)
+        viewModel = DeckViewModel(application, cardDao, deckRecordDao, scryfallService, moxfieldService, testDispatcher)
     }
 
     @Test

@@ -18,6 +18,8 @@ import com.mtgllm.plugin.api.ScryfallService
 import com.mtgllm.plugin.data.CardDao
 import com.mtgllm.plugin.data.CardDatabase
 import com.mtgllm.plugin.data.CardEntity
+import com.mtgllm.plugin.data.DeckRecordDao
+import com.mtgllm.plugin.data.DeckRecordEntity
 import com.mtgllm.plugin.utils.CardSection
 import com.mtgllm.plugin.utils.DeckInfo
 import com.mtgllm.plugin.utils.DeckParser
@@ -41,12 +43,15 @@ sealed class DeckProcessState {
 class DeckViewModel @JvmOverloads constructor(
     application: Application,
     private val cardDao: CardDao? = null,
+    private val deckRecordDao: DeckRecordDao? = null,
     private val scryfallService: ScryfallService? = null,
     private val moxfieldService: MoxfieldService? = null,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : AndroidViewModel(application) {
 
-    private val realCardDao = cardDao ?: CardDatabase.getDatabase(application).cardDao()
+    private val db = CardDatabase.getDatabase(application)
+    private val realCardDao = cardDao ?: db.cardDao()
+    private val realDeckRecordDao = deckRecordDao ?: db.deckRecordDao()
     private val realScryfallService = scryfallService ?: RetrofitClient.scryfallService
     private val realMoxfieldService = moxfieldService ?: RetrofitClient.moxfieldService
     private val prefs = application.getSharedPreferences("mtg_deck_prefs", Context.MODE_PRIVATE)
@@ -57,11 +62,52 @@ class DeckViewModel @JvmOverloads constructor(
     private val _moxfieldDeck = MutableLiveData<DeckInfo?>(null)
     val moxfieldDeck: LiveData<DeckInfo?> = _moxfieldDeck
 
+    private val _history = MutableLiveData<List<DeckRecordEntity>>(emptyList())
+    val history: LiveData<List<DeckRecordEntity>> = _history
+
+    private val _cachedCardCount = MutableLiveData<Int>(0)
+    val cachedCardCount: LiveData<Int> = _cachedCardCount
+
     private var latestResultFile: File? = null
 
     var autoShareEnabled: Boolean
         get() = prefs.getBoolean("auto_share", true)
         set(value) = prefs.edit().putBoolean("auto_share", value).apply()
+
+    var historyLimit: Int
+        get() = prefs.getInt("history_limit", 10)
+        set(value) = prefs.edit().putInt("history_limit", value).apply()
+
+    init {
+        refreshStats()
+        loadHistory()
+    }
+
+    fun refreshStats() {
+        viewModelScope.launch {
+            _cachedCardCount.value = withContext(ioDispatcher) { realCardDao.getCardCount() }
+        }
+    }
+
+    fun loadHistory() {
+        viewModelScope.launch {
+            _history.value = withContext(ioDispatcher) { realDeckRecordDao.getAllRecords() }
+        }
+    }
+
+    fun clearCache() {
+        viewModelScope.launch {
+            withContext(ioDispatcher) { realCardDao.clearAll() }
+            refreshStats()
+        }
+    }
+
+    fun clearHistory() {
+        viewModelScope.launch {
+            withContext(ioDispatcher) { realDeckRecordDao.clearAll() }
+            loadHistory()
+        }
+    }
 
     fun fetchDeckFromUrl(url: String) {
         if (url.contains("moxfield.com/decks/")) {
@@ -187,6 +233,7 @@ class DeckViewModel @JvmOverloads constructor(
                         withContext(ioDispatcher) {
                             realCardDao.insertCards(newEntities)
                         }
+                        refreshStats()
                     }
                 } catch (e: Exception) {
                     Log.e("DeckViewModel", "Error fetching cards", e)
@@ -206,6 +253,20 @@ class DeckViewModel @JvmOverloads constructor(
                 val totalCount = filteredCards.sumOf { it.quantity }
                 val failedOnes = cardNames.filterNot { oracleTexts.containsKey(it) }
                 
+                // Save to history
+                val record = DeckRecordEntity(
+                    name = deckName,
+                    timestamp = System.currentTimeMillis(),
+                    fileName = resultFile.name,
+                    cardCount = totalCount,
+                    resultText = resultFile.readText()
+                )
+                withContext(ioDispatcher) {
+                    realDeckRecordDao.insertRecord(record)
+                    realDeckRecordDao.trimRecords(historyLimit)
+                }
+                loadHistory()
+
                 _state.value = DeckProcessState.Success(resultFile.name, totalCount, failedOnes)
                 
                 // Automatic share only if enabled AND no cards failed
@@ -236,6 +297,17 @@ class DeckViewModel @JvmOverloads constructor(
                 if (!card.power.isNullOrEmpty()) append("${card.power}/${card.toughness}\n")
             }
         }
+    }
+
+    private suspend fun fetchInBatches(names: List<String>): List<ScryfallCard> {
+        val result = mutableListOf<ScryfallCard>()
+        val chunks = names.chunked(75) // Scryfall batch limit is 75
+        for (chunk in chunks) {
+            val request = ScryfallCollectionRequest(chunk.map { CardIdentifier(it) })
+            val response = realScryfallService.getCollection(request)
+            result.addAll(response.data)
+        }
+        return result
     }
 
     private fun generateResultFile(
@@ -285,17 +357,27 @@ class DeckViewModel @JvmOverloads constructor(
 
     fun shareLatestFile() {
         latestResultFile?.let { file ->
-            val context = getApplication<Application>()
-            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_STREAM, uri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            val chooser = Intent.createChooser(intent, "Share Oracle Text File")
-            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(chooser)
+            shareFileInternal(file)
         }
+    }
+
+    fun shareRecord(record: DeckRecordEntity) {
+        val file = File(getApplication<Application>().cacheDir, record.fileName)
+        file.writeText(record.resultText)
+        shareFileInternal(file)
+    }
+
+    private fun shareFileInternal(file: File) {
+        val context = getApplication<Application>()
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val chooser = Intent.createChooser(intent, "Share Oracle Text File")
+        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(chooser)
     }
 
     fun getLatestResultText(): String? {

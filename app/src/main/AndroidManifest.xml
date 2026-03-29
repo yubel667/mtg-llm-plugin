@@ -30,6 +30,8 @@
         </activity>
 
         <activity android:name=".HelpActivity" />
+        <activity android:name=".HistoryActivity" />
+        <activity android:name=".OptionsActivity" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

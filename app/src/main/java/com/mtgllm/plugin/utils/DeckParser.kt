@@ -84,8 +84,14 @@ object DeckParser {
             if (!isCard) {
                 when {
                     upper.contains("SIDEBOARD") -> currentSection = CardSection.SIDEBOARD
-                    upper.contains("MAYBOARD") || upper.contains("CONSIDERING") -> currentSection = CardSection.MAYBOARD
+                    upper.contains("MAYBEBOARD") || upper.contains("MAYBOARD") || upper.contains("CONSIDERING") -> currentSection = CardSection.MAYBOARD
                     upper.contains("COMMANDER") -> currentSection = CardSection.COMMANDER
+                    trimmed.startsWith("[") && trimmed.endsWith("]") -> currentSection = CardSection.MAIN
+                    trimmed.endsWith(":") -> currentSection = CardSection.MAIN
+                    // Common category names
+                    upper == "CREATURES" || upper == "ARTIFACTS" || upper == "INSTANTS" || 
+                    upper == "SORCERIES" || upper == "ENCHANTMENTS" || upper == "LANDS" || 
+                    upper == "PLANESWALKERS" -> currentSection = CardSection.MAIN
                 }
             }
             

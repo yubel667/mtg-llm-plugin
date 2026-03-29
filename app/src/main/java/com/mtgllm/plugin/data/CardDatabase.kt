@@ -5,9 +5,10 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [CardEntity::class], version = 1, exportSchema = false)
+@Database(entities = [CardEntity::class, DeckRecordEntity::class], version = 2, exportSchema = false)
 abstract class CardDatabase : RoomDatabase() {
     abstract fun cardDao(): CardDao
+    abstract fun deckRecordDao(): DeckRecordDao
 
     companion object {
         @Volatile
@@ -19,7 +20,9 @@ abstract class CardDatabase : RoomDatabase() {
                     context.applicationContext,
                     CardDatabase::class.java,
                     "card_database"
-                ).build()
+                )
+                .fallbackToDestructiveMigration() // Simple for template app, wipes DB on version change
+                .build()
                 INSTANCE = instance
                 instance
             }
