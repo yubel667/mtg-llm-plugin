@@ -77,6 +77,23 @@ class DeckParserTest {
     }
 
     @Test
+    fun `parse MTGTop8 like text`() {
+        val input = """
+            1 Sol Ring
+            1 Mana Crypt
+            Sideboard
+            1 Marneus Calgar
+        """.trimIndent()
+
+        val result = DeckParser.parse(input, "Marneus Calgar")
+        
+        assertEquals("Marneus Calgar", result.name)
+        assertEquals(3, result.cards.size)
+        assertEquals(CardSection.MAIN, result.cards[0].section)
+        assertEquals(CardSection.SIDEBOARD, result.cards[2].section)
+    }
+
+    @Test
     fun `parse decklist with empty lines`() {
         val input = """
             

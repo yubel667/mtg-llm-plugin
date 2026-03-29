@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    padding="24dp"
+    android:padding="24dp"
     tools:context=".MainActivity">
 
     <TextView
@@ -16,6 +16,18 @@
         android:textStyle="bold"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
+
+    <Button
+        android:id="@+id/helpButton"
+        style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Help"
+        android:minHeight="0dp"
+        android:paddingVertical="4dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/titleTextView"
+        app:layout_constraintBottom_toBottomOf="@id/titleTextView" />
 
     <!-- URL Input Section -->
     <LinearLayout
@@ -29,7 +41,7 @@
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Paste Moxfield URL">
+            android:hint="Paste Moxfield or MTGTop8 URL">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/moxfieldUrlEditText"
@@ -38,11 +50,36 @@
                 android:inputType="textUri" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <Button
+                android:id="@+id/pasteButton"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Paste" />
+
+            <Button
+                android:id="@+id/clearButton"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="Clear" />
+        </LinearLayout>
+
         <Button
             android:id="@+id/loadMoxfieldButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Load Moxfield Deck" />
+            android:layout_marginTop="8dp"
+            android:text="Load Deck from URL" />
     </LinearLayout>
 
     <!-- Configuration Section (Visible before processing) -->
@@ -90,7 +127,7 @@
                     android:id="@+id/sideboardCheckBox"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Side"
+                    android:text="Sideboard"
                     android:checked="true" />
 
                 <com.google.android.material.checkbox.MaterialCheckBox
@@ -98,7 +135,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
-                    android:text="May"
+                    android:text="Maybeboard"
                     android:checked="false" />
             </LinearLayout>
 
@@ -157,7 +194,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="48dp"
-        android:text="To use: Paste Moxfield URL above, or Share a decklist (text/file) from Mana Box to this app."
+        android:text="To use: Paste Moxfield/MTGTop8 URL above, or Share a decklist (text/file) from Mana Box to this app."
         android:textAlignment="center"
         android:alpha="0.7"
         app:layout_constraintBottom_toBottomOf="parent"

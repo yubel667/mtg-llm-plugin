@@ -88,6 +88,7 @@ fun `fetchMoxfieldDeck succeeds with commander`() = runTest {
         val finalState = viewModel.state.value
         assertTrue("Expected Success state but was $finalState", 
             finalState is DeckProcessState.Success)
+        assertEquals(1, (finalState as DeckProcessState.Success).cardCount)
     }
 
     @Test
@@ -104,5 +105,6 @@ fun `fetchMoxfieldDeck succeeds with commander`() = runTest {
         val finalState = viewModel.state.value
         assertTrue("Expected Success state but was $finalState", 
             finalState is DeckProcessState.Success)
+        assertEquals(1, (finalState as DeckProcessState.Success).cardCount)
     }
 }

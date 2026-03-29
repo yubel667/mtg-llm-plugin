@@ -15,6 +15,9 @@ object DeckParser {
         if (input.contains("moxfield.com/decks/")) {
             return parseUrl(input)
         }
+        if (input.contains("mtgtop8.com/")) {
+            return parseUrl(input)
+        }
         return parseText(input, defaultName)
     }
 
@@ -74,19 +77,25 @@ object DeckParser {
             val trimmed = line.trim()
             val upper = trimmed.uppercase()
             
-            when {
-                upper.contains("SIDEBOARD") -> currentSection = CardSection.SIDEBOARD
-                upper.contains("MAYBOARD") -> currentSection = CardSection.MAYBOARD
-                upper.contains("CONSIDERING") -> currentSection = CardSection.MAYBOARD
-                trimmed.isEmpty() -> {} 
-                else -> {
-                    val lineMatch = LINE_PATTERN.find(trimmed)
-                    if (lineMatch != null) {
-                        val quantity = lineMatch.groupValues[1].toIntOrNull() ?: 1
-                        val name = lineMatch.groupValues[2].trim()
-                        if (name.isNotEmpty()) {
-                            cards.add(ParsedCard(quantity, name, currentSection))
-                        }
+            // Check for section headers first
+            // We use simple "contains" but only if the line doesn't match a card pattern
+            val isCard = LINE_PATTERN.matches(trimmed)
+            
+            if (!isCard) {
+                when {
+                    upper.contains("SIDEBOARD") -> currentSection = CardSection.SIDEBOARD
+                    upper.contains("MAYBOARD") || upper.contains("CONSIDERING") -> currentSection = CardSection.MAYBOARD
+                    upper.contains("COMMANDER") -> currentSection = CardSection.COMMANDER
+                }
+            }
+            
+            if (isCard) {
+                val lineMatch = LINE_PATTERN.find(trimmed)
+                if (lineMatch != null) {
+                    val quantity = lineMatch.groupValues[1].toIntOrNull() ?: 1
+                    val name = lineMatch.groupValues[2].trim()
+                    if (name.isNotEmpty()) {
+                        cards.add(ParsedCard(quantity, name, currentSection))
                     }
                 }
             }
@@ -105,22 +114,26 @@ object DeckParser {
                 .userAgent("MTG-LLM-Plugin/1.0")
                 .get()
             
-            // Extract title more cleanly
-            val title = doc.title().replace(" - ManaBox", "").replace(" - Moxfield", "").trim()
+            val title = doc.title().replace(" - ManaBox", "").replace(" - Moxfield", "").split("@").first().trim()
             
-            // For Mana Box, let's try to get text from the specific containers if possible
-            // but doc.text() is usually a good fallback if we fix the spacing.
-            val bodyText = doc.body().text() 
-            
-            val info = parseText(bodyText, deckName = title)
-            
-            // If still empty, try selecting all elements that look like they have numbers
-            if (info.cards.isEmpty()) {
-                val altText = doc.select("div, span, li").joinToString("\n") { it.ownText() }
-                return parseText(altText, deckName = title)
+            // If it's MTGTop8, fetch the MTGO export text
+            val bodyText = if (url.contains("mtgtop8.com/")) {
+                val deckId = Regex("""d=(\d+)""").find(url)?.groupValues?.get(1)
+                if (deckId != null) {
+                    Jsoup.connect("https://www.mtgtop8.com/mtgo?d=$deckId")
+                        .timeout(10000)
+                        .userAgent("MTG-LLM-Plugin/1.0")
+                        .ignoreContentType(true)
+                        .execute()
+                        .body()
+                } else {
+                    doc.body().text()
+                }
+            } else {
+                doc.body().text()
             }
             
-            info
+            parseText(bodyText, deckName = title)
         } catch (e: IOException) {
             DeckInfo("Error Fetching Deck", emptyList(), "URL: $url\nError: ${e.localizedMessage}")
         }

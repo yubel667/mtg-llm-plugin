@@ -29,6 +29,8 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".HelpActivity" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

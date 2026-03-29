@@ -26,7 +26,7 @@ import java.util.Locale
 sealed class DeckProcessState {
     data object Idle : DeckProcessState()
     data class Processing(val progress: Int, val message: String) : DeckProcessState()
-    data class Success(val fileName: String) : DeckProcessState()
+    data class Success(val fileName: String, val cardCount: Int) : DeckProcessState()
     data class Error(val message: String) : DeckProcessState()
 }
 
@@ -51,10 +51,10 @@ class DeckViewModel @JvmOverloads constructor(
     fun fetchDeckFromUrl(url: String) {
         if (url.contains("moxfield.com/decks/")) {
             fetchMoxfieldDeck(url)
-        } else if (url.contains("manabox.app/decks/")) {
-            fetchManaBoxDeck(url)
+        } else if (url.contains("mtgtop8.com/")) {
+            fetchMtgTop8Deck(url)
         } else {
-            _state.value = DeckProcessState.Error("Unsupported URL. Only Moxfield and Mana Box are supported.")
+            _state.value = DeckProcessState.Error("Unsupported URL. Only Moxfield and MTGTop8 are supported.")
         }
     }
 
@@ -79,20 +79,20 @@ class DeckViewModel @JvmOverloads constructor(
         }
     }
 
-    private fun fetchManaBoxDeck(url: String) {
+    private fun fetchMtgTop8Deck(url: String) {
         viewModelScope.launch {
-            _state.value = DeckProcessState.Processing(0, "Fetching from Mana Box...")
+            _state.value = DeckProcessState.Processing(0, "Fetching from MTGTop8...")
             try {
                 val deckInfo = withContext(ioDispatcher) { DeckParser.parse(url) }
                 if (deckInfo.cards.isNotEmpty()) {
                     _moxfieldDeck.value = deckInfo
                     _state.value = DeckProcessState.Idle
                 } else {
-                    _state.value = DeckProcessState.Error("Could not find any cards on the Mana Box page.")
+                    _state.value = DeckProcessState.Error("Could not find any cards on the MTGTop8 page.")
                 }
             } catch (e: Exception) {
-                Log.e("DeckViewModel", "Error fetching Mana Box deck", e)
-                _state.value = DeckProcessState.Error("Mana Box Fetch Error: ${e.localizedMessage}")
+                Log.e("DeckViewModel", "Error fetching MTGTop8 deck", e)
+                _state.value = DeckProcessState.Error("MTGTop8 Fetch Error: ${e.localizedMessage}")
             }
         }
     }
@@ -171,7 +171,8 @@ class DeckViewModel @JvmOverloads constructor(
             }
 
             if (resultFile != null) {
-                _state.value = DeckProcessState.Success(resultFile.name)
+                val totalCount = filteredCards.sumOf { it.quantity }
+                _state.value = DeckProcessState.Success(resultFile.name, totalCount)
                 // In test environment, skip sharing to avoid Android class dependency
                 if (System.getProperty("java.runtime.name") == "Android Runtime") {
                     shareFile(resultFile)

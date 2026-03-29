@@ -22,13 +22,30 @@ class MainActivity : AppCompatActivity() {
             resetUI()
         }
 
+        binding.pasteButton.setOnClickListener {
+            val clipboard = getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            val item = clipboard.primaryClip?.getItemAt(0)
+            val pasteData = item?.text?.toString()
+            if (!pasteData.isNullOrEmpty()) {
+                binding.moxfieldUrlEditText.setText(pasteData)
+            }
+        }
+
+        binding.clearButton.setOnClickListener {
+            binding.moxfieldUrlEditText.text?.clear()
+        }
+
         binding.loadMoxfieldButton.setOnClickListener {
             val url = binding.moxfieldUrlEditText.text.toString().trim()
             if (url.isNotEmpty()) {
                 viewModel.fetchDeckFromUrl(url)
             } else {
-                showError("Please enter a Moxfield or Mana Box URL")
+                showError("Please enter a Moxfield or MTGTop8 URL")
             }
+        }
+
+        binding.helpButton.setOnClickListener {
+            startActivity(Intent(this, HelpActivity::class.java))
         }
 
         setupObservers()
@@ -54,13 +71,14 @@ class MainActivity : AppCompatActivity() {
         if (Intent.ACTION_SEND == intent.action) {
             binding.statusTextView.text = "Receiving share..."
             
-            // Check if it's a Moxfield URL being shared
+            // Check if it's a supported URL being shared
             intent.getStringExtra(Intent.EXTRA_TEXT)?.let { sharedText ->
-                if (sharedText.contains("moxfield.com/decks/")) {
+                if (sharedText.contains("moxfield.com/decks/") || sharedText.contains("mtgtop8.com/")) {
                     binding.moxfieldUrlEditText.setText(sharedText)
                     viewModel.fetchDeckFromUrl(sharedText)
                     return
                 }
+                binding.moxfieldUrlEditText.text?.clear()
                 prepareForConversion(sharedText, null)
                 return
             }
@@ -178,7 +196,7 @@ class MainActivity : AppCompatActivity() {
                 is DeckProcessState.Success -> {
                     binding.progressBar.visibility = View.GONE
                     binding.statusTextView.text = "Success!"
-                    binding.messageTextView.text = "Generated: ${state.fileName}"
+                    binding.messageTextView.text = "Generated: ${state.fileName}\nTotal cards: ${state.cardCount}"
                     binding.resetButton.visibility = View.VISIBLE
                 }
                 is DeckProcessState.Error -> {
