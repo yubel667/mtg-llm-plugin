@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="24dp"
+    padding="24dp"
     tools:context=".MainActivity">
 
     <TextView
@@ -157,7 +157,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="48dp"
-        android:text="To use: Share a decklist text/URL, or paste a Moxfield URL above."
+        android:text="To use: Paste Moxfield URL above, or Share a decklist (text/file) from Mana Box to this app."
         android:textAlignment="center"
         android:alpha="0.7"
         app:layout_constraintBottom_toBottomOf="parent"

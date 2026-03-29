@@ -9,16 +9,10 @@ data class DeckInfo(val name: String, val cards: List<ParsedCard>, val rawText: 
 
 object DeckParser {
     // Regex matches formats like "1 Sol Ring", "4x Lightning Bolt", "1 Arcane Signet (CLB) 298"
-    private val CARD_PATTERN = Regex("""^(\d+)[xX]?\s+(.+?)(?:\s+\([A-Z0-9]{3,4}\)\s+\d+)?$""")
+    private val LINE_PATTERN = Regex("""^(\d+)[xX]?\s+(.+?)(?:\s+\([A-Z0-9]{3,4}\)\s+\d+)?$""")
 
     fun parse(input: String, defaultName: String? = null): DeckInfo {
         if (input.contains("moxfield.com/decks/")) {
-            // Special handling for Moxfield URLs should happen in the ViewModel/Activity
-            // because it's an async operation. 
-            // For now, parse as URL (Jsoup fallback) if called directly.
-            return parseUrl(input)
-        }
-        if (input.startsWith("http://") || input.startsWith("https://")) {
             return parseUrl(input)
         }
         return parseText(input, defaultName)
@@ -83,12 +77,13 @@ object DeckParser {
             when {
                 upper.contains("SIDEBOARD") -> currentSection = CardSection.SIDEBOARD
                 upper.contains("MAYBOARD") -> currentSection = CardSection.MAYBOARD
-                trimmed.isEmpty() -> {} // Keep current section on empty lines or reset? Usually keep.
+                upper.contains("CONSIDERING") -> currentSection = CardSection.MAYBOARD
+                trimmed.isEmpty() -> {} 
                 else -> {
-                    val matchResult = CARD_PATTERN.find(trimmed)
-                    if (matchResult != null) {
-                        val quantity = matchResult.groupValues[1].toIntOrNull() ?: 1
-                        val name = matchResult.groupValues[2].trim()
+                    val lineMatch = LINE_PATTERN.find(trimmed)
+                    if (lineMatch != null) {
+                        val quantity = lineMatch.groupValues[1].toIntOrNull() ?: 1
+                        val name = lineMatch.groupValues[2].trim()
                         if (name.isNotEmpty()) {
                             cards.add(ParsedCard(quantity, name, currentSection))
                         }
@@ -97,7 +92,9 @@ object DeckParser {
             }
         }
         
-        val finalName = deckName ?: cards.firstOrNull { it.section == CardSection.MAIN }?.name ?: "New Deck"
+        val finalName = deckName ?: cards.firstOrNull { it.section == CardSection.COMMANDER }?.name 
+                         ?: cards.firstOrNull { it.section == CardSection.MAIN }?.name 
+                         ?: "New Deck"
         return DeckInfo(finalName, cards, text)
     }
 
@@ -107,9 +104,23 @@ object DeckParser {
                 .timeout(10000)
                 .userAgent("MTG-LLM-Plugin/1.0")
                 .get()
-            val title = doc.title().split("|").firstOrNull()?.trim() ?: "New Deck"
-            val bodyText = doc.text() // Get all text from the page as raw text
-            parseText(bodyText, deckName = title)
+            
+            // Extract title more cleanly
+            val title = doc.title().replace(" - ManaBox", "").replace(" - Moxfield", "").trim()
+            
+            // For Mana Box, let's try to get text from the specific containers if possible
+            // but doc.text() is usually a good fallback if we fix the spacing.
+            val bodyText = doc.body().text() 
+            
+            val info = parseText(bodyText, deckName = title)
+            
+            // If still empty, try selecting all elements that look like they have numbers
+            if (info.cards.isEmpty()) {
+                val altText = doc.select("div, span, li").joinToString("\n") { it.ownText() }
+                return parseText(altText, deckName = title)
+            }
+            
+            info
         } catch (e: IOException) {
             DeckInfo("Error Fetching Deck", emptyList(), "URL: $url\nError: ${e.localizedMessage}")
         }

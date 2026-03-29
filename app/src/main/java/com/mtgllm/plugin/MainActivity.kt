@@ -25,9 +25,9 @@ class MainActivity : AppCompatActivity() {
         binding.loadMoxfieldButton.setOnClickListener {
             val url = binding.moxfieldUrlEditText.text.toString().trim()
             if (url.isNotEmpty()) {
-                viewModel.fetchMoxfieldDeck(url)
+                viewModel.fetchDeckFromUrl(url)
             } else {
-                showError("Please enter a Moxfield URL")
+                showError("Please enter a Moxfield or Mana Box URL")
             }
         }
 
@@ -58,7 +58,7 @@ class MainActivity : AppCompatActivity() {
             intent.getStringExtra(Intent.EXTRA_TEXT)?.let { sharedText ->
                 if (sharedText.contains("moxfield.com/decks/")) {
                     binding.moxfieldUrlEditText.setText(sharedText)
-                    viewModel.fetchMoxfieldDeck(sharedText)
+                    viewModel.fetchDeckFromUrl(sharedText)
                     return
                 }
                 prepareForConversion(sharedText, null)

@@ -60,9 +60,10 @@ fun `fetchMoxfieldDeck succeeds with commander`() = runTest {
 
     coEvery { moxfieldService.getDeck(any()) } returns response
 
-    viewModel.fetchMoxfieldDeck(url)
+    viewModel.fetchDeckFromUrl(url)
 
     val deckInfo = viewModel.moxfieldDeck.value
+
     assertEquals("Attla, Palani's Nest", deckInfo?.name)
     assertEquals(2, deckInfo?.cards?.size)
     assertEquals(com.mtgllm.plugin.utils.CardSection.COMMANDER, deckInfo?.cards?.get(0)?.section)

@@ -48,7 +48,17 @@ class DeckViewModel @JvmOverloads constructor(
     private val _moxfieldDeck = MutableLiveData<DeckInfo?>(null)
     val moxfieldDeck: LiveData<DeckInfo?> = _moxfieldDeck
 
-    fun fetchMoxfieldDeck(url: String) {
+    fun fetchDeckFromUrl(url: String) {
+        if (url.contains("moxfield.com/decks/")) {
+            fetchMoxfieldDeck(url)
+        } else if (url.contains("manabox.app/decks/")) {
+            fetchManaBoxDeck(url)
+        } else {
+            _state.value = DeckProcessState.Error("Unsupported URL. Only Moxfield and Mana Box are supported.")
+        }
+    }
+
+    private fun fetchMoxfieldDeck(url: String) {
         val deckId = extractMoxfieldId(url)
         if (deckId == null) {
             _state.value = DeckProcessState.Error("Invalid Moxfield URL")
@@ -61,7 +71,7 @@ class DeckViewModel @JvmOverloads constructor(
                 val response = withContext(ioDispatcher) { realMoxfieldService.getDeck(deckId) }
                 val deckInfo = DeckParser.parseMoxfieldResponse(response)
                 _moxfieldDeck.value = deckInfo
-                _state.value = DeckProcessState.Idle // Ready for user configuration
+                _state.value = DeckProcessState.Idle 
             } catch (e: Exception) {
                 Log.e("DeckViewModel", "Error fetching Moxfield deck", e)
                 _state.value = DeckProcessState.Error("Moxfield API Error: ${e.localizedMessage}")
@@ -69,8 +79,25 @@ class DeckViewModel @JvmOverloads constructor(
         }
     }
 
+    private fun fetchManaBoxDeck(url: String) {
+        viewModelScope.launch {
+            _state.value = DeckProcessState.Processing(0, "Fetching from Mana Box...")
+            try {
+                val deckInfo = withContext(ioDispatcher) { DeckParser.parse(url) }
+                if (deckInfo.cards.isNotEmpty()) {
+                    _moxfieldDeck.value = deckInfo
+                    _state.value = DeckProcessState.Idle
+                } else {
+                    _state.value = DeckProcessState.Error("Could not find any cards on the Mana Box page.")
+                }
+            } catch (e: Exception) {
+                Log.e("DeckViewModel", "Error fetching Mana Box deck", e)
+                _state.value = DeckProcessState.Error("Mana Box Fetch Error: ${e.localizedMessage}")
+            }
+        }
+    }
+
     private fun extractMoxfieldId(url: String): String? {
-        // Example: https://www.moxfield.com/decks/hyRL_mx_YE6
         val regex = Regex("moxfield.com/decks/([^/?#]+)")
         return regex.find(url)?.groupValues?.get(1)
     }

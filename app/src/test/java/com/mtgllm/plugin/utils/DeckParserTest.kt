@@ -58,6 +58,25 @@ class DeckParserTest {
     }
 
     @Test
+    fun `parse Mana Box like text`() {
+        val input = """
+            ManaBox Deck: Dragons
+            Mainboard:
+            1 The Ur-Dragon
+            1 Dragonlord Dromoka
+            1 Island
+            Sideboard:
+            1 Pyroblast
+        """.trimIndent()
+
+        val result = DeckParser.parse(input, "Dragons")
+        
+        assertEquals("Dragons", result.name)
+        assertTrue(result.cards.any { it.name == "The Ur-Dragon" && it.section == CardSection.MAIN })
+        assertTrue(result.cards.any { it.name == "Pyroblast" && it.section == CardSection.SIDEBOARD })
+    }
+
+    @Test
     fun `parse decklist with empty lines`() {
         val input = """
             
