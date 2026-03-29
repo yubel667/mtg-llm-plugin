@@ -13,7 +13,8 @@ data class CardIdentifier(
 )
 
 data class ScryfallCollectionResponse(
-    val data: List<ScryfallCard>
+    val data: List<ScryfallCard>,
+    @SerializedName("not_found") val notFound: List<CardIdentifier>?
 )
 
 data class ScryfallCard(

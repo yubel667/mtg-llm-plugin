@@ -43,7 +43,7 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- URL Input Card -->
+            <!-- URL Import Card -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/urlCard"
                 android:layout_width="match_parent"
@@ -61,7 +61,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Import from URL"
+                        android:text="Import Deck"
                         android:textAppearance="?attr/textAppearanceTitleMedium"
                         android:textColor="?attr/colorPrimary" />
 
@@ -106,8 +106,22 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1.5"
-                            android:text="Load Deck" />
+                            android:text="Load URL" />
                     </LinearLayout>
+
+                    <com.google.android.material.divider.MaterialDivider
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:layout_marginBottom="8dp" />
+
+                    <com.google.android.material.checkbox.MaterialCheckBox
+                        android:id="@+id/autoShareCheckBox"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        android:text="Auto-share on success" />
+
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -123,6 +137,7 @@
                 app:strokeWidth="0dp">
 
                 <LinearLayout
+                    android:id="@+id/configLayout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
@@ -185,13 +200,6 @@
                             android:text="Maybeboard" />
                     </LinearLayout>
 
-                    <com.google.android.material.checkbox.MaterialCheckBox
-                        android:id="@+id/autoShareCheckBox"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:checked="true"
-                        android:text="Auto-share on success" />
-
                     <Button
                         android:id="@+id/processButton"
                         android:layout_width="match_parent"
@@ -238,43 +246,27 @@
                     android:id="@+id/successActionsLayout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
+                    android:orientation="horizontal"
                     android:gravity="center"
+                    android:layout_marginTop="16dp"
                     android:visibility="gone">
 
                     <Button
-                        android:id="@+id/previewButton"
+                        android:id="@+id/shareFileButton"
                         style="@style/Widget.Material3.Button.TonalButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:text="Preview Result"
-                        app:icon="@drawable/ic_help" />
+                        android:text="Share File"
+                        app:icon="@drawable/ic_content_paste" />
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
+                    <Button
+                        android:id="@+id/saveToLocalButton"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center"
-                        android:layout_marginTop="8dp">
-
-                        <Button
-                            android:id="@+id/shareFileButton"
-                            style="@style/Widget.Material3.Button.TonalButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Share File"
-                            app:icon="@drawable/ic_content_paste" />
-
-                        <Button
-                            android:id="@+id/saveToLocalButton"
-                            style="@style/Widget.Material3.Button.TonalButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="12dp"
-                            android:text="Save to Local"
-                            app:icon="@drawable/ic_add" />
-                    </LinearLayout>
+                        android:layout_marginStart="12dp"
+                        android:text="Save to Local"
+                        app:icon="@drawable/ic_add" />
                 </LinearLayout>
 
                 <Button
@@ -286,6 +278,43 @@
                     android:text="Clear &amp; Start Over"
                     android:visibility="gone" />
             </LinearLayout>
+
+            <!-- Preview Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/previewCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:visibility="gone"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="1dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="?attr/colorOutlineVariant">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Result Preview"
+                        android:textAppearance="?attr/textAppearanceLabelLarge"
+                        android:textColor="?attr/colorSecondary" />
+
+                    <TextView
+                        android:id="@+id/previewTextView"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:maxHeight="300dp"
+                        android:textSize="12sp"
+                        android:fontFamily="monospace"
+                        android:scrollbars="vertical" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <TextView
                 android:id="@+id/instructionsTextView"

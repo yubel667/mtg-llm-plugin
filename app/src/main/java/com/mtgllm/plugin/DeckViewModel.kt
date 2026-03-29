@@ -159,18 +159,34 @@ class DeckViewModel @JvmOverloads constructor(
             if (missingNames.isNotEmpty()) {
                 _state.value = DeckProcessState.Processing(30, "Fetching ${missingNames.size} cards from Scryfall...")
                 try {
-                    val fetchedCards = fetchInBatches(missingNames)
+                    val chunks = missingNames.chunked(75)
                     val newEntities = mutableListOf<CardEntity>()
                     
-                    for (card in fetchedCards) {
-                        val text = formatOracleText(card)
-                        oracleTexts[card.name] = text
-                        newEntities.add(CardEntity(card.name, text))
+                    for (chunk in chunks) {
+                        val request = ScryfallCollectionRequest(chunk.map { CardIdentifier(it) })
+                        val response = realScryfallService.getCollection(request)
+                        
+                        val notFoundSet = response.notFound?.map { it.name.lowercase() }?.toSet() ?: emptySet()
+                        var dataIndex = 0
+                        
+                        for (requestedName in chunk) {
+                            if (!notFoundSet.contains(requestedName.lowercase())) {
+                                if (dataIndex < response.data.size) {
+                                    val card = response.data[dataIndex]
+                                    val text = formatOracleText(card)
+                                    oracleTexts[requestedName] = text
+                                    newEntities.add(CardEntity(requestedName, text))
+                                    dataIndex++
+                                }
+                            }
+                        }
                     }
                     
                     // Save to cache
-                    withContext(ioDispatcher) {
-                        realCardDao.insertCards(newEntities)
+                    if (newEntities.isNotEmpty()) {
+                        withContext(ioDispatcher) {
+                            realCardDao.insertCards(newEntities)
+                        }
                     }
                 } catch (e: Exception) {
                     Log.e("DeckViewModel", "Error fetching cards", e)
@@ -220,17 +236,6 @@ class DeckViewModel @JvmOverloads constructor(
                 if (!card.power.isNullOrEmpty()) append("${card.power}/${card.toughness}\n")
             }
         }
-    }
-
-    private suspend fun fetchInBatches(names: List<String>): List<ScryfallCard> {
-        val result = mutableListOf<ScryfallCard>()
-        val chunks = names.chunked(75) // Scryfall batch limit is 75
-        for (chunk in chunks) {
-            val request = ScryfallCollectionRequest(chunk.map { CardIdentifier(it) })
-            val response = realScryfallService.getCollection(request)
-            result.addAll(response.data)
-        }
-        return result
     }
 
     private fun generateResultFile(

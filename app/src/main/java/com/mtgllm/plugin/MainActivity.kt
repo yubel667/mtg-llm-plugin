@@ -2,11 +2,11 @@ package com.mtgllm.plugin
 
 import android.content.Intent
 import android.os.Bundle
+import android.text.method.ScrollingMovementMethod
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.mtgllm.plugin.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -29,6 +29,7 @@ class MainActivity : AppCompatActivity() {
         handleIntent(intent)
         
         binding.autoShareCheckBox.isChecked = viewModel.autoShareEnabled
+        binding.previewTextView.movementMethod = ScrollingMovementMethod()
     }
 
     private fun setupClickListeners() {
@@ -38,10 +39,6 @@ class MainActivity : AppCompatActivity() {
 
         binding.shareFileButton.setOnClickListener {
             viewModel.shareLatestFile()
-        }
-
-        binding.previewButton.setOnClickListener {
-            showPreview()
         }
 
         binding.saveToLocalButton.setOnClickListener {
@@ -80,15 +77,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showPreview() {
-        val text = viewModel.getLatestResultText() ?: "No content available."
-        MaterialAlertDialogBuilder(this)
-            .setTitle("Result Preview")
-            .setMessage(text)
-            .setPositiveButton("Close", null)
-            .show()
-    }
-
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         intent?.let { handleIntent(it) }
@@ -102,6 +90,7 @@ class MainActivity : AppCompatActivity() {
         binding.messageTextView.text = ""
         binding.resetButton.visibility = View.GONE
         binding.successActionsLayout.visibility = View.GONE
+        binding.previewCard.visibility = View.GONE
         binding.moxfieldUrlEditText.text?.clear()
     }
 
@@ -174,6 +163,7 @@ class MainActivity : AppCompatActivity() {
         binding.messageTextView.text = message
         binding.resetButton.visibility = View.VISIBLE
         binding.successActionsLayout.visibility = View.GONE
+        binding.previewCard.visibility = View.GONE
     }
 
     private fun prepareForConversion(text: String, defaultName: String?) {
@@ -200,6 +190,7 @@ class MainActivity : AppCompatActivity() {
             binding.progressBar.visibility = View.VISIBLE
             binding.resetButton.visibility = View.GONE
             binding.successActionsLayout.visibility = View.GONE
+            binding.previewCard.visibility = View.GONE
             
             val textToProcess = lastReceivedText ?: deckInfo.rawText
             
@@ -233,6 +224,7 @@ class MainActivity : AppCompatActivity() {
                     binding.messageTextView.text = state.message
                     binding.resetButton.visibility = View.GONE
                     binding.successActionsLayout.visibility = View.GONE
+                    binding.previewCard.visibility = View.GONE
                 }
                 is DeckProcessState.Success -> {
                     binding.progressBar.visibility = View.GONE
@@ -249,6 +241,10 @@ class MainActivity : AppCompatActivity() {
                     binding.messageTextView.text = msg
                     binding.resetButton.visibility = View.VISIBLE
                     binding.successActionsLayout.visibility = View.VISIBLE
+                    
+                    // Show preview
+                    binding.previewCard.visibility = View.VISIBLE
+                    binding.previewTextView.text = viewModel.getLatestResultText()
                 }
                 is DeckProcessState.Error -> {
                     binding.progressBar.visibility = View.GONE
@@ -257,6 +253,7 @@ class MainActivity : AppCompatActivity() {
                     binding.resetButton.visibility = View.VISIBLE
                     binding.configCard.visibility = View.GONE
                     binding.successActionsLayout.visibility = View.GONE
+                    binding.previewCard.visibility = View.GONE
                 }
             }
         }

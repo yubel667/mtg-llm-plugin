@@ -52,6 +52,25 @@ class DeckViewModelTest {
         viewModel = DeckViewModel(application, cardDao, scryfallService, moxfieldService, testDispatcher)
     }
 
+    @Test
+    fun `processDeck handles expanded names like Adventure or DFC`() = runTest {
+        val input = "1 Brazen Borrower"
+        
+        coEvery { cardDao.getCards(any()) } returns emptyList()
+        coEvery { scryfallService.getCollection(any()) } returns ScryfallCollectionResponse(
+            data = listOf(ScryfallCard("Brazen Borrower // Petty Theft", "{1}{U}{U}", "Creature", "Flash", "3", "1", null)),
+            notFound = emptyList()
+        )
+
+        viewModel.processDeck(input, "Adventure Deck", false, true, false)
+        advanceUntilIdle()
+        
+        val finalState = viewModel.state.value
+        assertTrue("Expected Success state but was $finalState", finalState is DeckProcessState.Success)
+        val successState = finalState as DeckProcessState.Success
+        assertTrue("Expected no failed cards but found ${successState.failedCards}", successState.failedCards.isEmpty())
+    }
+
     @After
     fun tearDown() {
         Dispatchers.resetMain()
@@ -144,7 +163,8 @@ class DeckViewModelTest {
         
         coEvery { cardDao.getCards(any()) } returns emptyList()
         coEvery { scryfallService.getCollection(any()) } returns ScryfallCollectionResponse(
-            data = listOf(ScryfallCard("Sol Ring", "{1}", "Artifact", "Tap to add CC", null, null, null))
+            data = listOf(ScryfallCard("Sol Ring", "{1}", "Artifact", "Tap to add CC", null, null, null)),
+            notFound = emptyList()
         )
 
         viewModel.processDeck(input, "My Deck", false, true, false)
