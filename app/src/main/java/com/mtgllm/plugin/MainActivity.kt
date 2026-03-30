@@ -232,6 +232,20 @@ class MainActivity : AppCompatActivity() {
         binding.statusContainer.visibility = View.VISIBLE
         binding.statusTextView.text = "Analysis Complete"
         binding.deckNameEditText.setText(deckInfo.name)
+
+        // Deck Summary and Preview
+        val totalCards = deckInfo.cards.sumOf { it.quantity }
+        val uniqueCards = deckInfo.cards.size
+        binding.deckSummaryTextView.text = "Summary: $totalCards total cards ($uniqueCards unique)"
+        binding.deckPreviewTextView.text = deckInfo.rawText
+
+        // Auto-check Game Changers for Commander (e.g. 90+ cards)
+        val isCommanderSize = totalCards >= 90
+        if (viewModel.autoGameChangerEnabled && isCommanderSize) {
+            binding.gameChangersCheckBox.isChecked = true
+        } else {
+            binding.gameChangersCheckBox.isChecked = false
+        }
         
         binding.processButton.setOnClickListener {
             val finalName = binding.deckNameEditText.text.toString().trim()

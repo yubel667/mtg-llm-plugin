@@ -82,6 +82,10 @@ class DeckViewModel @JvmOverloads constructor(
         get() = prefs.getBoolean("ask_before_delete", true)
         set(value) = prefs.edit().putBoolean("ask_before_delete", value).apply()
 
+    var autoGameChangerEnabled: Boolean
+        get() = prefs.getBoolean("auto_game_changer", true)
+        set(value) = prefs.edit().putBoolean("auto_game_changer", value).apply()
+
     private val _gameChangers = MutableLiveData<List<String>>(emptyList())
     val gameChangers: LiveData<List<String>> = _gameChangers
 
