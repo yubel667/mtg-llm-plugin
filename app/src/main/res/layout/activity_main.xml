@@ -339,14 +339,34 @@
                         app:icon="@drawable/ic_add" />
                 </LinearLayout>
 
-                <Button
-                    android:id="@+id/resetButton"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:id="@+id/postProcessActionsLayout"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center"
                     android:layout_marginTop="16dp"
-                    android:text="Clear &amp; Start Over"
-                    android:visibility="gone" />
+                    android:visibility="gone">
+
+                    <Button
+                        android:id="@+id/backToConfigButton"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Back to Config"
+                        app:icon="@drawable/ic_settings" />
+
+                    <Button
+                        android:id="@+id/resetButton"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="12dp"
+                        android:text="Clear &amp; Reset"
+                        app:icon="@drawable/ic_clear" />
+                </LinearLayout>
             </LinearLayout>
 
             <!-- Preview Card -->

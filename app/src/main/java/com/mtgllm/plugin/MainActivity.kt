@@ -49,6 +49,17 @@ class MainActivity : AppCompatActivity() {
             resetUI()
         }
 
+        binding.backToConfigButton.setOnClickListener {
+            binding.configCard.visibility = View.VISIBLE
+            binding.statusContainer.visibility = View.VISIBLE
+            binding.statusTextView.text = "Analysis Complete"
+            binding.messageTextView.text = ""
+            binding.postProcessActionsLayout.visibility = View.GONE
+            binding.successActionsLayout.visibility = View.GONE
+            binding.previewCard.visibility = View.GONE
+            binding.progressBar.visibility = View.GONE
+        }
+
         binding.shareFileButton.setOnClickListener {
             viewModel.shareLatestFile()
         }
@@ -137,8 +148,8 @@ class MainActivity : AppCompatActivity() {
         binding.progressBar.visibility = View.GONE
         binding.statusTextView.text = ""
         binding.messageTextView.text = ""
-        binding.resetButton.visibility = View.GONE
         binding.successActionsLayout.visibility = View.GONE
+        binding.postProcessActionsLayout.visibility = View.GONE
         binding.previewCard.visibility = View.GONE
         binding.moxfieldUrlEditText.text?.clear()
     }
@@ -212,7 +223,7 @@ class MainActivity : AppCompatActivity() {
         binding.statusContainer.visibility = View.VISIBLE
         binding.statusTextView.text = "Error"
         binding.messageTextView.text = message
-        binding.resetButton.visibility = View.VISIBLE
+        binding.postProcessActionsLayout.visibility = View.VISIBLE
         binding.successActionsLayout.visibility = View.GONE
         binding.previewCard.visibility = View.GONE
     }
@@ -236,7 +247,7 @@ class MainActivity : AppCompatActivity() {
         // Hide previous results
         binding.previewCard.visibility = View.GONE
         binding.successActionsLayout.visibility = View.GONE
-        binding.resetButton.visibility = View.GONE
+        binding.postProcessActionsLayout.visibility = View.GONE
 
         // Deck Summary and Preview
         val totalCards = deckInfo.cards.sumOf { it.quantity }
@@ -276,7 +287,7 @@ class MainActivity : AppCompatActivity() {
 
             binding.configCard.visibility = View.GONE
             binding.progressBar.visibility = View.VISIBLE
-            binding.resetButton.visibility = View.GONE
+            binding.postProcessActionsLayout.visibility = View.GONE
             binding.successActionsLayout.visibility = View.GONE
             binding.previewCard.visibility = View.GONE
             
@@ -315,7 +326,7 @@ class MainActivity : AppCompatActivity() {
                     binding.progressBar.progress = state.progress
                     binding.statusTextView.text = "Processing..."
                     binding.messageTextView.text = state.message
-                    binding.resetButton.visibility = View.GONE
+                    binding.postProcessActionsLayout.visibility = View.GONE
                     binding.successActionsLayout.visibility = View.GONE
                     binding.previewCard.visibility = View.GONE
                 }
@@ -333,7 +344,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                     binding.messageTextView.text = msg
-                    binding.resetButton.visibility = View.VISIBLE
+                    binding.postProcessActionsLayout.visibility = View.VISIBLE
                     binding.successActionsLayout.visibility = View.VISIBLE
                     
                     // Show preview
@@ -345,7 +356,7 @@ class MainActivity : AppCompatActivity() {
                     binding.progressBar.visibility = View.GONE
                     binding.statusTextView.text = "Error"
                     binding.messageTextView.text = state.message
-                    binding.resetButton.visibility = View.VISIBLE
+                    binding.postProcessActionsLayout.visibility = View.VISIBLE
                     binding.configCard.visibility = View.GONE
                     binding.successActionsLayout.visibility = View.GONE
                     binding.previewCard.visibility = View.GONE
