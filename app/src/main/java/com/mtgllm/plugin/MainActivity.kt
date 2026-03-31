@@ -232,6 +232,11 @@ class MainActivity : AppCompatActivity() {
         binding.statusContainer.visibility = View.VISIBLE
         binding.statusTextView.text = "Analysis Complete"
         binding.deckNameEditText.setText(deckInfo.name)
+        
+        // Hide previous results
+        binding.previewCard.visibility = View.GONE
+        binding.successActionsLayout.visibility = View.GONE
+        binding.resetButton.visibility = View.GONE
 
         // Deck Summary and Preview
         val totalCards = deckInfo.cards.sumOf { it.quantity }
