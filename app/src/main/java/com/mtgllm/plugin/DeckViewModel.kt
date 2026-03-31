@@ -282,12 +282,15 @@ class DeckViewModel(
     class Factory(private val application: Application) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(DeckViewModel::class.java)) {
-                val db = CardDatabase.getDatabase(application)
+                val cardDb = com.mtgllm.plugin.data.CardDatabase.getDatabase(application)
+                val historyDb = com.mtgllm.plugin.data.HistoryDatabase.getDatabase(application)
+                val promptDb = com.mtgllm.plugin.data.PromptDatabase.getDatabase(application)
+                
                 val repository = DeckRepository(
                     application,
-                    db.cardDao(),
-                    db.deckRecordDao(),
-                    db.promptDao(),
+                    cardDb.cardDao(),
+                    historyDb.deckRecordDao(),
+                    promptDb.promptDao(),
                     RetrofitClient.scryfallService,
                     RetrofitClient.moxfieldService
                 )

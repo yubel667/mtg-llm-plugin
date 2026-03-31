@@ -11,6 +11,7 @@ import com.mtgllm.plugin.utils.DeckParser
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.emitAll
 import org.jsoup.Jsoup
 import java.io.IOException
 
@@ -26,10 +27,20 @@ class DeckRepository(
     private val prefs = context.getSharedPreferences("mtg_deck_prefs", Context.MODE_PRIVATE)
 
     // Prompt methods
-    fun getAllPromptsFlow() = promptDao.getAllPromptsFlow()
+    fun getAllPromptsFlow() = kotlinx.coroutines.flow.flow {
+        checkAndPopulateDefaults()
+        emitAll(promptDao.getAllPromptsFlow())
+    }
     
     suspend fun getAllPrompts() = withContext(ioDispatcher) {
+        checkAndPopulateDefaults()
         promptDao.getAllPrompts()
+    }
+
+    private suspend fun checkAndPopulateDefaults() = withContext(ioDispatcher) {
+        if (promptDao.getAllPrompts().isEmpty()) {
+            PromptDatabase.populateDefaultPrompts(promptDao)
+        }
     }
 
     suspend fun insertPrompt(prompt: PromptEntity) = withContext(ioDispatcher) {
@@ -50,7 +61,7 @@ class DeckRepository(
 
     suspend fun resetPromptsToDefault() = withContext(ioDispatcher) {
         promptDao.deleteAll()
-        CardDatabase.populateDefaultPrompts(promptDao)
+        PromptDatabase.populateDefaultPrompts(promptDao)
     }
 
     suspend fun getPromptById(id: Int) = withContext(ioDispatcher) {
