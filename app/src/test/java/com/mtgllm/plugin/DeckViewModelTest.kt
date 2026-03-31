@@ -62,7 +62,12 @@ class DeckViewModelTest {
         
         coEvery { cardDao.getCards(any()) } returns emptyList()
         coEvery { scryfallService.getCollection(any()) } returns ScryfallCollectionResponse(
-            data = listOf(ScryfallCard("Brazen Borrower // Petty Theft", "{1}{U}{U}", "Creature", "Flash", "3", "1", null)),
+            data = listOf(ScryfallCard("Brazen Borrower // Petty Theft", "{1}{U}{U}", "Creature", "Flash", "3", "1", 
+                listOf(
+                    CardFace("Brazen Borrower", "{1}{U}{U}", "Creature", "Flash", "3", "1"),
+                    CardFace("Petty Theft", "{1}{U}", "Instant", "Return target nonland permanent", null, null)
+                )
+            )),
             notFound = emptyList()
         )
 

@@ -110,11 +110,12 @@ object DeckParser {
                     val quantity = lineMatch.groupValues[1].toIntOrNull() ?: 1
                     var name = lineMatch.groupValues[2].trim()
 
-                    // Normalize double sided cards
-                    if (name.contains("/") && !name.contains("//")) {
-                        val parts = name.split("/")
-                        if (parts.size == 2) {
-                            name = "${parts[0].trim()} // ${parts[1].trim()}"
+                    // Normalize split cards and double-faced cards (e.g., "Fire // Ice", "Dead // Gone", "CardA/CardB")
+                    // Scryfall Collection API works best when only the front face is requested.
+                    if (name.contains("/")) {
+                        val parts = name.split(Regex("/+"))
+                        if (parts.isNotEmpty()) {
+                            name = parts[0].trim()
                         }
                     }
 

@@ -276,17 +276,49 @@ class DeckViewModel @JvmOverloads constructor(
                         val request = ScryfallCollectionRequest(chunk.map { CardIdentifier(it) })
                         val response = realScryfallService.getCollection(request)
                         
-                        val notFoundSet = response.notFound?.map { it.name.lowercase() }?.toSet() ?: emptySet()
-                        var dataIndex = 0
+                        // Create a lookup for found cards
+                        val foundCardsMap = mutableMapOf<String, ScryfallCard>()
+                        for (card in response.data) {
+                            foundCardsMap[card.name.lowercase()] = card
+                            // Also map individual face names to the full card (e.g., "Dead" or "Gone" -> "Dead // Gone")
+                            card.cardFaces?.forEach { face ->
+                                foundCardsMap[face.name.lowercase()] = card
+                            }
+                        }
                         
                         for (requestedName in chunk) {
-                            if (!notFoundSet.contains(requestedName.lowercase())) {
-                                if (dataIndex < response.data.size) {
-                                    val card = response.data[dataIndex]
-                                    val text = formatOracleText(card)
+                            val lowerRequested = requestedName.lowercase()
+                            val foundCard = foundCardsMap[lowerRequested]
+                            
+                            if (foundCard != null) {
+                                val text = formatOracleText(foundCard)
+                                oracleTexts[requestedName] = text
+                                newEntities.add(CardEntity(requestedName, text))
+                            } else {
+                                // Double check: Scryfall standard name might be "Front // Back" but user requested "Front"
+                                // OR they requested "Front / Back" (different spacing)
+                                val requestedParts = if (requestedName.contains("/")) {
+                                    requestedName.split(Regex("/+")).map { it.trim().lowercase() }
+                                } else {
+                                    listOf(lowerRequested)
+                                }
+
+                                val match = response.data.find { scryfallCard ->
+                                    val scryfallNameLower = scryfallCard.name.lowercase()
+                                    // Case 1: Standard name matches requested exactly
+                                    if (scryfallNameLower == lowerRequested) return@find true
+                                    
+                                    // Case 2: Standard name contains ALL requested parts (handles "Front / Back" -> "Front // Back")
+                                    if (requestedParts.size > 1 && requestedParts.all { part -> scryfallNameLower.contains(part) }) return@find true
+                                    
+                                    // Case 3: Scryfall card has faces, and one face matches requested EXACTLY (handles "Front" -> "Front // Back")
+                                    scryfallCard.cardFaces?.any { it.name.lowercase() == lowerRequested } == true
+                                }
+                                
+                                if (match != null) {
+                                    val text = formatOracleText(match)
                                     oracleTexts[requestedName] = text
                                     newEntities.add(CardEntity(requestedName, text))
-                                    dataIndex++
                                 }
                             }
                         }

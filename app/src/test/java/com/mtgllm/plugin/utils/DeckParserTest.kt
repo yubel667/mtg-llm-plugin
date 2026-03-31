@@ -28,14 +28,18 @@ class DeckParserTest {
             1 Bala Ged Recovery/Bala Ged Sanctuary
             1 Fire // Ice
             1 CardA/CardB
+            1 Dead // Gone
+            1 Trial /// Error
         """.trimIndent()
 
         val result = DeckParser.parse(input)
         
-        assertEquals("Delver of Secrets // Insectile Aberration", result.cards[0].name)
-        assertEquals("Bala Ged Recovery // Bala Ged Sanctuary", result.cards[1].name)
-        assertEquals("Fire // Ice", result.cards[2].name)
-        assertEquals("CardA // CardB", result.cards[3].name)
+        assertEquals("Delver of Secrets", result.cards[0].name)
+        assertEquals("Bala Ged Recovery", result.cards[1].name)
+        assertEquals("Fire", result.cards[2].name)
+        assertEquals("CardA", result.cards[3].name)
+        assertEquals("Dead", result.cards[4].name)
+        assertEquals("Trial", result.cards[5].name)
     }
 
     @Test
