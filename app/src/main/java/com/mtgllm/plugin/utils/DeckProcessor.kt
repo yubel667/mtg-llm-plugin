@@ -69,7 +69,7 @@ class DeckProcessor(
         // 3. Generate File
         onProgress(90, "Generating Oracle text file...")
         val gameChangers = if (includeGameChangers) repository.getCachedGameChangers() else null
-        val resultFile = generateResultFile(deckInfo.rawText, filteredCards, deckName, appendTimestamp, oracleTexts, gameChangers, prompt)
+        val resultFile = generateResultFile(filteredCards, deckName, appendTimestamp, oracleTexts, gameChangers, prompt)
 
         return if (resultFile != null) {
             val totalCount = filteredCards.sumOf { it.quantity }
@@ -81,7 +81,6 @@ class DeckProcessor(
     }
 
     private fun generateResultFile(
-        rawText: String,
         cards: List<ParsedCard>,
         deckName: String,
         appendTimestamp: Boolean,
