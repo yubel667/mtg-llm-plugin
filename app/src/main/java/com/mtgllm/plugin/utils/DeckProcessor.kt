@@ -19,6 +19,7 @@ class DeckProcessor(
         includeSideboard: Boolean,
         includeMaybeboard: Boolean,
         includeGameChangers: Boolean,
+        prompt: String? = null,
         onProgress: (Int, String) -> Unit
     ): ProcessingResult {
         onProgress(0, "Parsing deck...")
@@ -68,7 +69,7 @@ class DeckProcessor(
         // 3. Generate File
         onProgress(90, "Generating Oracle text file...")
         val gameChangers = if (includeGameChangers) repository.getCachedGameChangers() else null
-        val resultFile = generateResultFile(deckInfo.rawText, filteredCards, deckName, appendTimestamp, oracleTexts, gameChangers)
+        val resultFile = generateResultFile(deckInfo.rawText, filteredCards, deckName, appendTimestamp, oracleTexts, gameChangers, prompt)
 
         return if (resultFile != null) {
             val totalCount = filteredCards.sumOf { it.quantity }
@@ -85,13 +86,19 @@ class DeckProcessor(
         deckName: String,
         appendTimestamp: Boolean,
         oracleTexts: Map<String, String>,
-        gameChangers: List<String>? = null
+        gameChangers: List<String>? = null,
+        prompt: String? = null
     ): File? {
         return try {
             val totalCards = cards.sumOf { it.quantity }
             val uniqueCards = cards.size
 
             val content = buildString {
+                if (!prompt.isNullOrEmpty()) {
+                    append("=== PROMPT ===\n")
+                    append(prompt)
+                    append("\n\n")
+                }
                 append("=== DECK INFO ===\n")
                 append("Name: $deckName\n")
                 append("Total cards dumped: $totalCards ($uniqueCards unique)\n")

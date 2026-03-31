@@ -21,6 +21,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
+import androidx.lifecycle.asLiveData
+
 sealed class DeckProcessState {
     data object Idle : DeckProcessState()
     data class Processing(val progress: Int, val message: String) : DeckProcessState()
@@ -72,11 +74,49 @@ class DeckViewModel(
     private val _lastGameChangerFetch = MutableLiveData<Long>(0)
     val lastGameChangerFetch: LiveData<Long> = _lastGameChangerFetch
 
+    val prompts: LiveData<List<com.mtgllm.plugin.data.PromptEntity>> = repository.getAllPromptsFlow().asLiveData()
+
+    private val _selectedPromptId = MutableLiveData<Int>(repository.getSelectedPromptId())
+    val selectedPromptId: LiveData<Int> = _selectedPromptId
+
     init {
         refreshStats()
         loadHistory()
         _gameChangers.value = repository.getCachedGameChangers()
         _lastGameChangerFetch.value = repository.getLastGameChangerFetch()
+    }
+
+    fun selectPrompt(id: Int) {
+        repository.setSelectedPromptId(id)
+        _selectedPromptId.value = id
+    }
+
+    fun insertPrompt(prompt: com.mtgllm.plugin.data.PromptEntity) {
+        viewModelScope.launch {
+            repository.insertPrompt(prompt)
+        }
+    }
+
+    fun updatePrompt(prompt: com.mtgllm.plugin.data.PromptEntity) {
+        viewModelScope.launch {
+            repository.updatePrompt(prompt)
+        }
+    }
+
+    fun deletePrompt(prompt: com.mtgllm.plugin.data.PromptEntity) {
+        viewModelScope.launch {
+            repository.deletePrompt(prompt)
+            if (_selectedPromptId.value == prompt.id) {
+                selectPrompt(-1)
+            }
+        }
+    }
+
+    fun resetPromptsToDefault() {
+        viewModelScope.launch {
+            repository.resetPromptsToDefault()
+            selectPrompt(-1)
+        }
     }
 
     fun fetchGameChangers() {
@@ -162,8 +202,13 @@ class DeckViewModel(
         includeGameChangers: Boolean = false
     ) {
         viewModelScope.launch {
+            val selectedPrompt = _selectedPromptId.value?.let { id ->
+                if (id != -1) repository.getPromptById(id) else null
+            }
+            
             val result = processor.process(
-                input, customName, appendTimestamp, includeSideboard, includeMaybeboard, includeGameChangers
+                input, customName, appendTimestamp, includeSideboard, includeMaybeboard, includeGameChangers,
+                selectedPrompt?.content
             ) { progress, message ->
                 _state.value = DeckProcessState.Processing(progress, message)
             }
@@ -236,6 +281,7 @@ class DeckViewModel(
                     application,
                     db.cardDao(),
                     db.deckRecordDao(),
+                    db.promptDao(),
                     RetrofitClient.scryfallService,
                     RetrofitClient.moxfieldService
                 )

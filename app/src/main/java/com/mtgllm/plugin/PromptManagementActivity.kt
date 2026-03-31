@@ -1,0 +1,102 @@
+package com.mtgllm.plugin
+
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.widget.EditText
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.mtgllm.plugin.data.PromptEntity
+import com.mtgllm.plugin.databinding.ActivityPromptManagementBinding
+
+class PromptManagementActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityPromptManagementBinding
+    private lateinit var viewModel: DeckViewModel
+    private lateinit var adapter: PromptAdapter
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityPromptManagementBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        viewModel = ViewModelProvider(this, DeckViewModel.Factory(application))[DeckViewModel::class.java]
+
+        setupUI()
+        observeViewModel()
+    }
+
+    private fun setupUI() {
+        binding.toolbar.setNavigationOnClickListener { finish() }
+
+        binding.resetPromptsButton.setOnClickListener {
+            MaterialAlertDialogBuilder(this)
+                .setTitle("Reset Prompts?")
+                .setMessage("This will delete all your custom prompts and restore the default ones. Continue?")
+                .setPositiveButton("Reset") { _, _ ->
+                    viewModel.resetPromptsToDefault()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
+
+        adapter = PromptAdapter(
+            onEdit = { showPromptDialog(it) },
+            onDelete = { showDeleteConfirmation(it) }
+        )
+
+        binding.promptsRecyclerView.layoutManager = LinearLayoutManager(this)
+        binding.promptsRecyclerView.adapter = adapter
+
+        binding.addPromptFab.setOnClickListener {
+            showPromptDialog(null)
+        }
+    }
+
+    private fun observeViewModel() {
+        viewModel.prompts.observe(this) {
+            adapter.submitList(it)
+        }
+    }
+
+    private fun showPromptDialog(prompt: PromptEntity?) {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_edit_prompt, null)
+        val nameEditText = dialogView.findViewById<EditText>(R.id.promptNameEditText)
+        val contentEditText = dialogView.findViewById<EditText>(R.id.promptContentEditText)
+
+        prompt?.let {
+            nameEditText.setText(it.name)
+            contentEditText.setText(it.content)
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(if (prompt == null) "Add New Prompt" else "Edit Prompt")
+            .setView(dialogView)
+            .setPositiveButton("Save") { _, _ ->
+                val name = nameEditText.text.toString().trim()
+                val content = contentEditText.text.toString().trim()
+                if (name.isNotEmpty() && content.isNotEmpty()) {
+                    if (prompt == null) {
+                        viewModel.insertPrompt(PromptEntity(name = name, content = content))
+                    } else {
+                        viewModel.updatePrompt(prompt.copy(name = name, content = content))
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showDeleteConfirmation(prompt: PromptEntity) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Delete Prompt?")
+            .setMessage("Are you sure you want to delete '${prompt.name}'?")
+            .setPositiveButton("Delete") { _, _ ->
+                viewModel.deletePrompt(prompt)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+}

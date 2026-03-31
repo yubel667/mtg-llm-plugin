@@ -61,7 +61,7 @@ class DeckViewModelTest {
         val resultFile = File.createTempFile("result", ".txt").apply { writeText("Oracle Data") }
         
         coEvery { 
-            processor.process(any(), any(), any(), any(), any(), any(), any()) 
+            processor.process(any(), any(), any(), any(), any(), any(), any(), any()) 
         } returns ProcessingResult.Success(resultFile, 1, emptyList(), "Test Deck", input)
 
         viewModel.processDeck(input, "Test Deck")
@@ -80,7 +80,7 @@ class DeckViewModelTest {
     fun `processDeck updates state on error`() = runTest {
         val input = "invalid"
         coEvery { 
-            processor.process(any(), any(), any(), any(), any(), any(), any()) 
+            processor.process(any(), any(), any(), any(), any(), any(), any(), any()) 
         } returns ProcessingResult.Error("Parsing Error")
 
         viewModel.processDeck(input)

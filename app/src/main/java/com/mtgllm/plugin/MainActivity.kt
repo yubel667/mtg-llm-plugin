@@ -103,6 +103,10 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, OptionsActivity::class.java))
         }
 
+        binding.promptsButton.setOnClickListener {
+            startActivity(Intent(this, PromptManagementActivity::class.java))
+        }
+
         binding.manaBoxGuideButton.setOnClickListener {
             showManaBoxGuide()
         }
@@ -218,6 +222,19 @@ class MainActivity : AppCompatActivity() {
         return result
     }
 
+    private fun updateSelectedPrompt(prompts: List<com.mtgllm.plugin.data.PromptEntity>, selectedId: Int) {
+        if (selectedId != -1) {
+            val selectedPrompt = prompts.find { it.id == selectedId }
+            if (selectedPrompt != null) {
+                binding.promptAutoCompleteTextView.setText(selectedPrompt.name, false)
+            } else {
+                binding.promptAutoCompleteTextView.setText("None", false)
+            }
+        } else {
+            binding.promptAutoCompleteTextView.setText("None", false)
+        }
+    }
+
     private fun showError(message: String) {
         binding.configCard.visibility = View.GONE
         binding.statusContainer.visibility = View.VISIBLE
@@ -305,6 +322,36 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupObservers() {
+        viewModel.prompts.observe(this) { prompts ->
+            val promptNames = mutableListOf("None")
+            promptNames.addAll(prompts.map { it.name })
+            
+            val adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, promptNames)
+            binding.promptAutoCompleteTextView.setAdapter(adapter)
+            
+            updateSelectedPrompt(prompts, viewModel.selectedPromptId.value ?: -1)
+        }
+
+        viewModel.selectedPromptId.observe(this) { id ->
+            viewModel.prompts.value?.let { prompts ->
+                updateSelectedPrompt(prompts, id)
+            }
+        }
+
+        binding.promptAutoCompleteTextView.setOnItemClickListener { _, _, position, _ ->
+            val selectedName = binding.promptAutoCompleteTextView.adapter.getItem(position) as String
+            if (selectedName == "None") {
+                viewModel.selectPrompt(-1)
+            } else {
+                val prompt = viewModel.prompts.value?.find { it.name == selectedName }
+                prompt?.let { viewModel.selectPrompt(it.id) }
+            }
+        }
+
+        binding.promptAutoCompleteTextView.setOnClickListener {
+            binding.promptAutoCompleteTextView.showDropDown()
+        }
+
         viewModel.moxfieldDeck.observe(this) { deckInfo ->
             deckInfo?.let {
                 lastReceivedText = it.rawText

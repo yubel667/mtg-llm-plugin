@@ -18,11 +18,48 @@ class DeckRepository(
     private val context: Context,
     private val cardDao: CardDao,
     private val deckRecordDao: DeckRecordDao,
+    private val promptDao: PromptDao,
     private val scryfallService: ScryfallService,
     private val moxfieldService: MoxfieldService,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
     private val prefs = context.getSharedPreferences("mtg_deck_prefs", Context.MODE_PRIVATE)
+
+    // Prompt methods
+    fun getAllPromptsFlow() = promptDao.getAllPromptsFlow()
+    
+    suspend fun getAllPrompts() = withContext(ioDispatcher) {
+        promptDao.getAllPrompts()
+    }
+
+    suspend fun insertPrompt(prompt: PromptEntity) = withContext(ioDispatcher) {
+        promptDao.insertPrompt(prompt)
+    }
+
+    suspend fun updatePrompt(prompt: PromptEntity) = withContext(ioDispatcher) {
+        promptDao.updatePrompt(prompt)
+    }
+
+    suspend fun deletePrompt(prompt: PromptEntity) = withContext(ioDispatcher) {
+        promptDao.deletePrompt(prompt)
+    }
+
+    suspend fun resetPromptsToDefault() = withContext(ioDispatcher) {
+        promptDao.deleteAll()
+        CardDatabase.populateDefaultPrompts(promptDao)
+    }
+
+    suspend fun getPromptById(id: Int) = withContext(ioDispatcher) {
+        promptDao.getPromptById(id)
+    }
+
+    fun getSelectedPromptId(): Int {
+        return prefs.getInt("selected_prompt_id", -1)
+    }
+
+    fun setSelectedPromptId(id: Int) {
+        prefs.edit().putInt("selected_prompt_id", id).apply()
+    }
 
     suspend fun getCardCount(): Int = withContext(ioDispatcher) {
         cardDao.getCardCount()
