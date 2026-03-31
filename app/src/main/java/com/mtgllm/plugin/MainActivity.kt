@@ -15,7 +15,7 @@ import io.noties.markwon.Markwon
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-    private val viewModel: DeckViewModel by viewModels()
+    private val viewModel: DeckViewModel by viewModels { DeckViewModel.Factory(application) }
     private var lastReceivedText: String? = null
     private lateinit var markwon: Markwon
 
@@ -61,7 +61,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.shareFileButton.setOnClickListener {
-            viewModel.shareLatestFile()
+            viewModel.shareLatestFile(this)
         }
 
         binding.saveToLocalButton.setOnClickListener {
@@ -350,6 +350,11 @@ class MainActivity : AppCompatActivity() {
                     // Show preview
                     binding.previewCard.visibility = View.VISIBLE
                     binding.previewTextView.text = viewModel.getLatestResultText()
+
+                    // Auto-share if enabled and no failures
+                    if (viewModel.autoShareEnabled && state.failedCards.isEmpty()) {
+                        viewModel.shareLatestFile(this)
+                    }
                 }
                 is DeckProcessState.Error -> {
                     binding.statusContainer.visibility = View.VISIBLE

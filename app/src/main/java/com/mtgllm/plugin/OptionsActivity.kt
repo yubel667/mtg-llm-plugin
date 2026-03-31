@@ -9,7 +9,7 @@ import com.mtgllm.plugin.databinding.ActivityOptionsBinding
 
 class OptionsActivity : AppCompatActivity() {
     private lateinit var binding: ActivityOptionsBinding
-    private val viewModel: DeckViewModel by viewModels()
+    private val viewModel: DeckViewModel by viewModels { DeckViewModel.Factory(application) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

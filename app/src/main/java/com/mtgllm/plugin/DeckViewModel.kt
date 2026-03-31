@@ -2,36 +2,24 @@ package com.mtgllm.plugin
 
 import android.app.Application
 import android.content.Context
-import android.content.Intent
 import android.util.Log
-import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.mtgllm.plugin.api.CardIdentifier
-import com.mtgllm.plugin.api.MoxfieldService
 import com.mtgllm.plugin.api.RetrofitClient
-import com.mtgllm.plugin.api.ScryfallCard
-import com.mtgllm.plugin.api.ScryfallCollectionRequest
-import com.mtgllm.plugin.api.ScryfallService
-import com.mtgllm.plugin.data.CardDao
 import com.mtgllm.plugin.data.CardDatabase
-import com.mtgllm.plugin.data.CardEntity
-import com.mtgllm.plugin.data.DeckRecordDao
 import com.mtgllm.plugin.data.DeckRecordEntity
-import com.mtgllm.plugin.utils.CardSection
+import com.mtgllm.plugin.data.DeckRepository
 import com.mtgllm.plugin.utils.DeckInfo
-import com.mtgllm.plugin.utils.DeckParser
-import com.mtgllm.plugin.utils.ParsedCard
-import kotlinx.coroutines.CoroutineDispatcher
+import com.mtgllm.plugin.utils.DeckProcessor
+import com.mtgllm.plugin.utils.ProcessingResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 sealed class DeckProcessState {
     data object Idle : DeckProcessState()
@@ -40,20 +28,12 @@ sealed class DeckProcessState {
     data class Error(val message: String) : DeckProcessState()
 }
 
-class DeckViewModel @JvmOverloads constructor(
+class DeckViewModel(
     application: Application,
-    private val cardDao: CardDao? = null,
-    private val deckRecordDao: DeckRecordDao? = null,
-    private val scryfallService: ScryfallService? = null,
-    private val moxfieldService: MoxfieldService? = null,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    private val repository: DeckRepository,
+    private val processor: DeckProcessor
 ) : AndroidViewModel(application) {
 
-    private val db = CardDatabase.getDatabase(application)
-    private val realCardDao = cardDao ?: db.cardDao()
-    private val realDeckRecordDao = deckRecordDao ?: db.deckRecordDao()
-    private val realScryfallService = scryfallService ?: RetrofitClient.scryfallService
-    private val realMoxfieldService = moxfieldService ?: RetrofitClient.moxfieldService
     private val prefs = application.getSharedPreferences("mtg_deck_prefs", Context.MODE_PRIVATE)
 
     private val _state = MutableLiveData<DeckProcessState>(DeckProcessState.Idle)
@@ -95,135 +75,82 @@ class DeckViewModel @JvmOverloads constructor(
     init {
         refreshStats()
         loadHistory()
-        loadGameChangers()
-    }
-
-    private fun loadGameChangers() {
-        val cached = prefs.getString("game_changers_cache", "") ?: ""
-        if (cached.isNotEmpty()) {
-            _gameChangers.value = cached.split("\n")
-        }
-        _lastGameChangerFetch.value = prefs.getLong("game_changers_last_fetch", 0)
+        _gameChangers.value = repository.getCachedGameChangers()
+        _lastGameChangerFetch.value = repository.getLastGameChangerFetch()
     }
 
     fun fetchGameChangers() {
         viewModelScope.launch {
             _state.value = DeckProcessState.Processing(0, "Fetching Game Changers from Scryfall...")
             try {
-                // Using Scryfall search API with is:gamechanger filter
-                val response = withContext(ioDispatcher) { realScryfallService.search("is:gamechanger") }
-                val names = response.data.map { it.name }.sorted()
-                
+                val names = repository.fetchGameChangers()
                 if (names.isEmpty()) {
-                    _state.value = DeckProcessState.Error("Game Changers Fetch Error: Scryfall returned no results for 'is:gamechanger'.")
+                    _state.value = DeckProcessState.Error("Game Changers Fetch Error: Scryfall returned no results.")
                     return@launch
                 }
-
-                prefs.edit()
-                    .putString("game_changers_cache", names.joinToString("\n"))
-                    .putLong("game_changers_last_fetch", System.currentTimeMillis())
-                    .apply()
-                
+                repository.saveGameChangers(names)
                 _gameChangers.value = names
-                _lastGameChangerFetch.value = System.currentTimeMillis()
+                _lastGameChangerFetch.value = repository.getLastGameChangerFetch()
                 _state.value = DeckProcessState.Idle
             } catch (e: Exception) {
-                Log.e("DeckViewModel", "Error fetching game changers from Scryfall", e)
-                _state.value = DeckProcessState.Error("Game Changers Fetch Error: ${e.localizedMessage}\n\nMake sure Scryfall API is reachable.")
+                _state.value = DeckProcessState.Error("Game Changers Fetch Error: ${e.localizedMessage}")
             }
         }
     }
 
     fun refreshStats() {
         viewModelScope.launch {
-            _cachedCardCount.value = withContext(ioDispatcher) { realCardDao.getCardCount() }
+            _cachedCardCount.value = repository.getCardCount()
         }
     }
 
     fun loadHistory(query: String = "") {
         viewModelScope.launch {
-            val allRecords = withContext(ioDispatcher) { realDeckRecordDao.getAllRecords() }
-            if (query.isEmpty()) {
-                _history.value = allRecords
-            } else {
-                _history.value = allRecords.filter { it.name.contains(query, ignoreCase = true) }
-            }
+            val allRecords = repository.getHistory()
+            _history.value = if (query.isEmpty()) allRecords else allRecords.filter { it.name.contains(query, ignoreCase = true) }
         }
     }
 
     fun deleteRecord(record: DeckRecordEntity) {
         viewModelScope.launch {
-            withContext(ioDispatcher) { realDeckRecordDao.deleteRecord(record.id) }
+            repository.deleteRecord(record.id)
             loadHistory()
         }
     }
 
     fun clearCache() {
         viewModelScope.launch {
-            withContext(ioDispatcher) { realCardDao.clearAll() }
+            repository.clearCardCache()
             refreshStats()
         }
     }
 
     fun clearHistory() {
         viewModelScope.launch {
-            withContext(ioDispatcher) { realDeckRecordDao.clearAll() }
+            repository.clearHistory()
             loadHistory()
         }
     }
 
     fun fetchDeckFromUrl(url: String) {
-        if (url.contains("moxfield.com/decks/")) {
-            fetchMoxfieldDeck(url)
-        } else if (url.contains("mtgtop8.com/")) {
-            fetchMtgTop8Deck(url)
-        } else {
-            _state.value = DeckProcessState.Error("Unsupported URL. Only Moxfield and MTGTop8 are supported.")
-        }
-    }
-
-    private fun fetchMoxfieldDeck(url: String) {
-        val deckId = extractMoxfieldId(url)
-        if (deckId == null) {
-            _state.value = DeckProcessState.Error("Invalid Moxfield URL")
-            return
-        }
-
         viewModelScope.launch {
-            _state.value = DeckProcessState.Processing(0, "Fetching from Moxfield...")
+            _state.value = DeckProcessState.Processing(0, "Fetching deck from URL...")
             try {
-                val response = withContext(ioDispatcher) { realMoxfieldService.getDeck(deckId) }
-                val deckInfo = DeckParser.parseMoxfieldResponse(response)
-                _moxfieldDeck.value = deckInfo
-                _state.value = DeckProcessState.Idle 
-            } catch (e: Exception) {
-                Log.e("DeckViewModel", "Error fetching Moxfield deck", e)
-                _state.value = DeckProcessState.Error("Moxfield API Error: ${e.localizedMessage}")
-            }
-        }
-    }
-
-    private fun fetchMtgTop8Deck(url: String) {
-        viewModelScope.launch {
-            _state.value = DeckProcessState.Processing(0, "Fetching from MTGTop8...")
-            try {
-                val deckInfo = withContext(ioDispatcher) { DeckParser.parse(url) }
-                if (deckInfo.cards.isNotEmpty()) {
-                    _moxfieldDeck.value = deckInfo
-                    _state.value = DeckProcessState.Idle
-                } else {
-                    _state.value = DeckProcessState.Error("Could not find any cards on the MTGTop8 page.")
+                val deckInfo = when {
+                    url.contains("moxfield.com/decks/") -> {
+                        val deckId = Regex("moxfield.com/decks/([^/?#]+)").find(url)?.groupValues?.get(1)
+                        if (deckId == null) throw Exception("Invalid Moxfield URL")
+                        repository.fetchMoxfieldDeck(deckId)
+                    }
+                    url.contains("mtgtop8.com/") -> repository.fetchMtgTop8Deck(url)
+                    else -> throw Exception("Unsupported URL. Only Moxfield and MTGTop8 are supported.")
                 }
+                _moxfieldDeck.value = deckInfo
+                _state.value = DeckProcessState.Idle
             } catch (e: Exception) {
-                Log.e("DeckViewModel", "Error fetching MTGTop8 deck", e)
-                _state.value = DeckProcessState.Error("MTGTop8 Fetch Error: ${e.localizedMessage}")
+                _state.value = DeckProcessState.Error("Fetch Error: ${e.localizedMessage}")
             }
         }
-    }
-
-    private fun extractMoxfieldId(url: String): String? {
-        val regex = Regex("moxfield.com/decks/([^/?#]+)")
-        return regex.find(url)?.groupValues?.get(1)
     }
 
     fun processDeck(
@@ -235,282 +162,57 @@ class DeckViewModel @JvmOverloads constructor(
         includeGameChangers: Boolean = false
     ) {
         viewModelScope.launch {
-            _state.value = DeckProcessState.Processing(0, "Parsing deck...")
-            
-            val deckInfo = withContext(ioDispatcher) { DeckParser.parse(input, customName) }
-            if (deckInfo.cards.isEmpty()) {
-                _state.value = DeckProcessState.Error("No valid cards found in the input.")
-                return@launch
+            val result = processor.process(
+                input, customName, appendTimestamp, includeSideboard, includeMaybeboard, includeGameChangers
+            ) { progress, message ->
+                _state.value = DeckProcessState.Processing(progress, message)
             }
 
-            val filteredCards = deckInfo.cards.filter { 
-                when(it.section) {
-                    CardSection.COMMANDER -> true
-                    CardSection.MAIN -> true
-                    CardSection.SIDEBOARD -> includeSideboard
-                    CardSection.MAYBOARD -> includeMaybeboard
-                }
-            }
-
-            val deckName = customName ?: deckInfo.name
-            val cardNames = filteredCards.map { it.name }.distinct()
-            val oracleTexts = mutableMapOf<String, String>()
-
-            // 1. Check Cache
-            _state.value = DeckProcessState.Processing(10, "Checking local cache...")
-            val cachedCards = withContext(ioDispatcher) { realCardDao.getCards(cardNames) }
-            for (card in cachedCards) {
-                oracleTexts[card.name] = card.oracleText
-            }
-
-            val missingNames = cardNames.filterNot { oracleTexts.containsKey(it) }
-
-            // 2. Fetch from Scryfall if needed
-            if (missingNames.isNotEmpty()) {
-                _state.value = DeckProcessState.Processing(30, "Fetching ${missingNames.size} cards from Scryfall...")
-                try {
-                    val chunks = missingNames.chunked(75)
-                    val newEntities = mutableListOf<CardEntity>()
+            when (result) {
+                is ProcessingResult.Success -> {
+                    latestResultFile = result.file
+                    repository.insertRecord(
+                        DeckRecordEntity(
+                            name = result.deckName,
+                            timestamp = System.currentTimeMillis(),
+                            fileName = result.file.name,
+                            cardCount = result.cardCount,
+                            resultText = result.file.readText(),
+                            rawInput = result.rawInput
+                        ),
+                        historyLimit
+                    )
+                    loadHistory()
+                    _state.value = DeckProcessState.Success(result.file.name, result.cardCount, result.failedCards)
                     
-                    for (chunk in chunks) {
-                        val request = ScryfallCollectionRequest(chunk.map { CardIdentifier(it) })
-                        val response = realScryfallService.getCollection(request)
-                        
-                        // Create a lookup for found cards
-                        val foundCardsMap = mutableMapOf<String, ScryfallCard>()
-                        for (card in response.data) {
-                            foundCardsMap[card.name.lowercase()] = card
-                            // Also map individual face names to the full card (e.g., "Dead" or "Gone" -> "Dead // Gone")
-                            card.cardFaces?.forEach { face ->
-                                foundCardsMap[face.name.lowercase()] = card
-                            }
-                        }
-                        
-                        for (requestedName in chunk) {
-                            val lowerRequested = requestedName.lowercase()
-                            val foundCard = foundCardsMap[lowerRequested]
-                            
-                            if (foundCard != null) {
-                                val text = formatOracleText(foundCard)
-                                oracleTexts[requestedName] = text
-                                newEntities.add(CardEntity(requestedName, text))
-                            } else {
-                                // Double check: Scryfall standard name might be "Front // Back" but user requested "Front"
-                                // OR they requested "Front / Back" (different spacing)
-                                val requestedParts = if (requestedName.contains("/")) {
-                                    requestedName.split(Regex("/+")).map { it.trim().lowercase() }
-                                } else {
-                                    listOf(lowerRequested)
-                                }
-
-                                val match = response.data.find { scryfallCard ->
-                                    val scryfallNameLower = scryfallCard.name.lowercase()
-                                    // Case 1: Standard name matches requested exactly
-                                    if (scryfallNameLower == lowerRequested) return@find true
-                                    
-                                    // Case 2: Standard name contains ALL requested parts (handles "Front / Back" -> "Front // Back")
-                                    if (requestedParts.size > 1 && requestedParts.all { part -> scryfallNameLower.contains(part) }) return@find true
-                                    
-                                    // Case 3: Scryfall card has faces, and one face matches requested EXACTLY (handles "Front" -> "Front // Back")
-                                    scryfallCard.cardFaces?.any { it.name.lowercase() == lowerRequested } == true
-                                }
-                                
-                                if (match != null) {
-                                    val text = formatOracleText(match)
-                                    oracleTexts[requestedName] = text
-                                    newEntities.add(CardEntity(requestedName, text))
-                                }
-                            }
-                        }
+                    if (autoShareEnabled && result.failedCards.isEmpty() && System.getProperty("java.runtime.name") == "Android Runtime") {
+                        // Success state triggers sharing in Activity
                     }
-                    
-                    // Save to cache
-                    if (newEntities.isNotEmpty()) {
-                        withContext(ioDispatcher) {
-                            realCardDao.insertCards(newEntities)
-                        }
-                        refreshStats()
-                    }
-                } catch (e: Exception) {
-                    Log.e("DeckViewModel", "Error fetching cards", e)
-                    _state.value = DeckProcessState.Error("API Error: ${e.localizedMessage}")
-                    return@launch
                 }
-            }
-
-            // 3. Generate File
-            _state.value = DeckProcessState.Processing(90, "Generating Oracle text file...")
-            val resultFile = withContext(ioDispatcher) {
-                generateResultFile(
-                    deckInfo.rawText, 
-                    filteredCards, 
-                    deckName, 
-                    appendTimestamp, 
-                    oracleTexts,
-                    if (includeGameChangers) _gameChangers.value else null
-                )
-            }
-
-            if (resultFile != null) {
-                latestResultFile = resultFile
-                val totalCount = filteredCards.sumOf { it.quantity }
-                val failedOnes = cardNames.filterNot { oracleTexts.containsKey(it) }
-                
-                // Save to history
-                val record = DeckRecordEntity(
-                    name = deckName,
-                    timestamp = System.currentTimeMillis(),
-                    fileName = resultFile.name,
-                    cardCount = totalCount,
-                    resultText = resultFile.readText(),
-                    rawInput = input
-                )
-                withContext(ioDispatcher) {
-                    realDeckRecordDao.insertRecord(record)
-                    realDeckRecordDao.trimRecords(historyLimit)
+                is ProcessingResult.Error -> {
+                    _state.value = DeckProcessState.Error(result.message)
                 }
-                loadHistory()
-
-                _state.value = DeckProcessState.Success(resultFile.name, totalCount, failedOnes)
-                
-                // Automatic share only if enabled AND no cards failed
-                if (autoShareEnabled && failedOnes.isEmpty() && System.getProperty("java.runtime.name") == "Android Runtime") {
-                    shareLatestFile()
-                }
-            } else {
-                _state.value = DeckProcessState.Error("Failed to generate file.")
             }
         }
     }
 
-    private fun formatOracleText(card: ScryfallCard): String {
-        return if (card.cardFaces != null) {
-            card.cardFaces.joinToString("\n---\n") { face ->
-                buildString {
-                    append("${face.name} ${face.manaCost ?: ""}\n")
-                    append("${face.typeLine ?: ""}\n")
-                    if (!face.oracleText.isNullOrEmpty()) append("${face.oracleText}\n")
-                    if (!face.power.isNullOrEmpty()) append("${face.power}/${face.toughness}\n")
-                }
-            }
-        } else {
-            buildString {
-                append("${card.name} ${card.manaCost ?: ""}\n")
-                append("${card.typeLine ?: ""}\n")
-                if (!card.oracleText.isNullOrEmpty()) append("${card.oracleText}\n")
-                if (!card.power.isNullOrEmpty()) append("${card.power}/${card.toughness}\n")
-            }
-        }
-    }
+    fun getLatestResultText(): String? = latestResultFile?.readText()
+    fun getLatestFileName(): String? = latestResultFile?.name
 
-    private fun generateResultFile(
-        rawText: String,
-        cards: List<ParsedCard>,
-        deckName: String,
-        appendTimestamp: Boolean,
-        oracleTexts: Map<String, String>,
-        gameChangers: List<String>? = null
-    ): File? {
-        return try {
-            val totalCards = cards.sumOf { it.quantity }
-            val uniqueCards = cards.size
-
-            val content = buildString {
-                append("=== DECK INFO ===\n")
-                append("Name: $deckName\n")
-                append("Total cards dumped: $totalCards ($uniqueCards unique)\n")
-                append("Generated on: ${Date()}\n\n")
-
-                append("=== DECKLIST ===\n\n")
-                val sections = cards.groupBy { it.section }
-                
-                sections[CardSection.COMMANDER]?.let { list ->
-                    append("[COMMANDER]\n")
-                    list.forEach { append("${it.quantity}x ${it.name}\n") }
-                    append("\n")
-                }
-                
-                sections[CardSection.MAIN]?.let { list ->
-                    append("[MAINBOARD]\n")
-                    list.forEach { append("${it.quantity}x ${it.name}\n") }
-                    append("\n")
-                }
-                
-                sections[CardSection.SIDEBOARD]?.let { list ->
-                    append("[SIDEBOARD]\n")
-                    list.forEach { append("${it.quantity}x ${it.name}\n") }
-                    append("\n")
-                }
-                
-                sections[CardSection.MAYBOARD]?.let { list ->
-                    append("[MAYBEBOARD]\n")
-                    list.forEach { append("${it.quantity}x ${it.name}\n") }
-                    append("\n")
-                }
-
-                if (!gameChangers.isNullOrEmpty()) {
-                    append("=== COMMANDER GAME CHANGER LIST ===\n\n")
-                    append(gameChangers.joinToString("\n"))
-                    append("\n\n")
-                }
-
-                append("=== ORACLE TEXT APPENDED BELOW ===\n\n")
-
-                for (card in cards) {
-                    append("[${card.section}] ${card.quantity}x ${card.name}\n")
-                    append(oracleTexts[card.name] ?: "!!! CARD NOT FOUND IN SCRYFALL !!!")
-                    append("\n\n--------------------------------\n\n")
-                }
-            }
-
-            val safeName = deckName.replace(Regex("[^a-zA-Z0-9.-]"), "_")
-            val fileName = if (appendTimestamp) {
-                val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-                "${safeName}_$timestamp.txt"
-            } else {
-                "$safeName.txt"
-            }
-            
-            val file = File(getApplication<Application>().cacheDir, fileName)
-            file.writeText(content)
+    fun shareLatestFile(context: Context) {
+        val file = latestResultFile ?: return
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
             file
-        } catch (e: Exception) {
-            Log.e("DeckViewModel", "Error generating file", e)
-            null
-        }
-    }
+        )
 
-    fun shareLatestFile() {
-        latestResultFile?.let { file ->
-            shareFileInternal(file)
-        }
-    }
-
-    fun shareRecord(record: DeckRecordEntity) {
-        val file = File(getApplication<Application>().cacheDir, record.fileName)
-        file.writeText(record.resultText)
-        shareFileInternal(file)
-    }
-
-    private fun shareFileInternal(file: File) {
-        val context = getApplication<Application>()
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-        val intent = Intent(Intent.ACTION_SEND).apply {
+        val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            putExtra(android.content.Intent.EXTRA_STREAM, uri)
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        val chooser = Intent.createChooser(intent, "Share Oracle Text File")
-        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(chooser)
-    }
-
-    fun getLatestResultText(): String? {
-        return latestResultFile?.readText()
-    }
-
-    fun getLatestFileName(): String? {
-        return latestResultFile?.name
+        context.startActivity(android.content.Intent.createChooser(intent, "Share Oracle Text"))
     }
 
     fun saveFileToUri(context: Context, uri: android.net.Uri) {
@@ -521,20 +223,27 @@ class DeckViewModel @JvmOverloads constructor(
                     output.write(content.toByteArray())
                 }
             } catch (e: Exception) {
-                Log.e("DeckViewModel", "Error saving file to URI", e)
+                Log.e("DeckViewModel", "Error saving file", e)
             }
         }
     }
 
-    fun saveRecordToUri(context: Context, record: DeckRecordEntity, uri: android.net.Uri) {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                context.contentResolver.openOutputStream(uri)?.use { output ->
-                    output.write(record.resultText.toByteArray())
-                }
-            } catch (e: Exception) {
-                Log.e("DeckViewModel", "Error saving record to URI", e)
+    class Factory(private val application: Application) : ViewModelProvider.Factory {
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            if (modelClass.isAssignableFrom(DeckViewModel::class.java)) {
+                val db = CardDatabase.getDatabase(application)
+                val repository = DeckRepository(
+                    application,
+                    db.cardDao(),
+                    db.deckRecordDao(),
+                    RetrofitClient.scryfallService,
+                    RetrofitClient.moxfieldService
+                )
+                val processor = DeckProcessor(application, repository)
+                @Suppress("UNCHECKED_CAST")
+                return DeckViewModel(application, repository, processor) as T
             }
+            throw IllegalArgumentException("Unknown ViewModel class")
         }
     }
 }

@@ -1,8 +1,5 @@
 package com.mtgllm.plugin.utils
 
-import org.jsoup.Jsoup
-import java.io.IOException
-
 enum class CardSection { MAIN, SIDEBOARD, MAYBOARD, COMMANDER }
 data class ParsedCard(val quantity: Int, val name: String, val section: CardSection = CardSection.MAIN)
 data class DeckInfo(val name: String, val cards: List<ParsedCard>, val rawText: String)
@@ -17,12 +14,6 @@ object DeckParser {
     private val LINE_PATTERN = Regex("""^(?:(\d+)[xX]?\s+)?([a-zA-Z0-9"].+?)(?:\s+\([A-Z0-9]{3,4}\)(?:\s+\d+)?)?(?:\s*[#*].*)?$""")
 
     fun parse(input: String, defaultName: String? = null): DeckInfo {
-        if (input.contains("moxfield.com/decks/")) {
-            return parseUrl(input)
-        }
-        if (input.contains("mtgtop8.com/")) {
-            return parseUrl(input)
-        }
         return parseText(input, defaultName)
     }
 
@@ -130,36 +121,5 @@ object DeckParser {
                          ?: cards.firstOrNull { it.section == CardSection.MAIN }?.name 
                          ?: "New Deck"
         return DeckInfo(finalName, cards, text)
-    }
-
-    private fun parseUrl(url: String): DeckInfo {
-        return try {
-            val doc = Jsoup.connect(url)
-                .timeout(10000)
-                .userAgent("MTG-LLM-Plugin/1.0")
-                .get()
-            
-            val title = doc.title().replace(" - ManaBox", "").replace(" - Moxfield", "").split("@").first().trim()
-            
-            val bodyText = if (url.contains("mtgtop8.com/")) {
-                val deckId = Regex("""d=(\d+)""").find(url)?.groupValues?.get(1)
-                if (deckId != null) {
-                    Jsoup.connect("https://www.mtgtop8.com/mtgo?d=$deckId")
-                        .timeout(10000)
-                        .userAgent("MTG-LLM-Plugin/1.0")
-                        .ignoreContentType(true)
-                        .execute()
-                        .body()
-                } else {
-                    doc.body().text()
-                }
-            } else {
-                doc.body().text()
-            }
-            
-            parseText(bodyText, deckName = title)
-        } catch (e: IOException) {
-            DeckInfo("Error Fetching Deck", emptyList(), "URL: $url\nError: ${e.localizedMessage}")
-        }
     }
 }

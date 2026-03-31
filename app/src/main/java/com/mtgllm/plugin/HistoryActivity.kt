@@ -12,7 +12,7 @@ import com.mtgllm.plugin.databinding.ActivityHistoryBinding
 
 class HistoryActivity : AppCompatActivity() {
     private lateinit var binding: ActivityHistoryBinding
-    private val viewModel: DeckViewModel by viewModels()
+    private val viewModel: DeckViewModel by viewModels { DeckViewModel.Factory(application) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
