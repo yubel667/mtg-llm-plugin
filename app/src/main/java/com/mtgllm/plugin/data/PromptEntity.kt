@@ -8,5 +8,6 @@ data class PromptEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
     val content: String,
-    val isDefault: Boolean = false
+    val isDefault: Boolean = false,
+    val position: Int = 0
 )

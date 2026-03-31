@@ -5,10 +5,10 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PromptDao {
-    @Query("SELECT * FROM prompts ORDER BY name ASC")
+    @Query("SELECT * FROM prompts ORDER BY position ASC, name ASC")
     fun getAllPromptsFlow(): Flow<List<PromptEntity>>
 
-    @Query("SELECT * FROM prompts")
+    @Query("SELECT * FROM prompts ORDER BY position ASC, name ASC")
     suspend fun getAllPrompts(): List<PromptEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -19,6 +19,9 @@ interface PromptDao {
 
     @Update
     suspend fun updatePrompt(prompt: PromptEntity)
+
+    @Update
+    suspend fun updatePrompts(prompts: List<PromptEntity>)
 
     @Delete
     suspend fun deletePrompt(prompt: PromptEntity)

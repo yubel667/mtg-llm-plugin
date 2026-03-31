@@ -10,7 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-@Database(entities = [CardEntity::class, DeckRecordEntity::class, PromptEntity::class], version = 4, exportSchema = false)
+@Database(entities = [CardEntity::class, DeckRecordEntity::class, PromptEntity::class], version = 5, exportSchema = false)
 abstract class CardDatabase : RoomDatabase() {
     abstract fun cardDao(): CardDao
     abstract fun deckRecordDao(): DeckRecordDao
@@ -47,29 +47,40 @@ abstract class CardDatabase : RoomDatabase() {
         suspend fun populateDefaultPrompts(promptDao: PromptDao) {
             val defaults = listOf(
                 PromptEntity(
-                    name = "EDH: Power Level & Swaps",
-                    content = "Analyze this Commander (EDH) deck. Provide a power level estimation (1-10), evaluate the mana curve, synergy between the commander and the 99, and suggest 5 specific card swaps to improve its consistency or power.",
-                    isDefault = true
+                    name = "EDH Power Level",
+                    content = "Analyze this Commander deck. Estimate power level (1-10), evaluate mana curve, synergy with commander, and suggest 5 card swaps for power/consistency.",
+                    isDefault = true,
+                    position = 0
                 ),
                 PromptEntity(
-                    name = "Competitive: Meta & Sideboard",
-                    content = "Analyze this competitive decklist for the current meta. Identify its primary win conditions, key weaknesses, and suggest sideboard adjustments against the most prevalent top-tier decks.",
-                    isDefault = true
+                    name = "Deck Summary",
+                    content = "Provide a concise summary of the deck's strategy, win conditions, key interactions, and most important 'Game Changer' cards.",
+                    isDefault = true,
+                    position = 1
                 ),
                 PromptEntity(
-                    name = "Strategic: Weaknesses & Threats",
-                    content = "What are the top 3 cards or archetypes this deck struggles against? Suggest specific mainboard or sideboard answers to these threats and explain the correct line of play.",
-                    isDefault = true
+                    name = "Bracket Analysis",
+                    content = "Perform an official Commander Bracket Analysis (1-5). Identify all 'Game Changer' cards, count them, and determine the bracket based on the 'Rule of 3' (1-2 GC = Bracket 3, 4+ GC = Bracket 4, etc.). Check for 2-card combos and fast mana.",
+                    isDefault = true,
+                    position = 2
                 ),
                 PromptEntity(
-                    name = "Budget: Top 10 Upgrades",
-                    content = "Suggest 10 budget-friendly upgrades (under $5 each) for this deck that provide the most significant impact on its performance. Explain why each card is a good fit.",
-                    isDefault = true
+                    name = "Competitive Meta",
+                    content = "Analyze for competitive meta. Identify wincons, key weaknesses, and suggest sideboard adjustments against top-tier decks.",
+                    isDefault = true,
+                    position = 3
                 ),
                 PromptEntity(
-                    name = "Summarize Strategy",
-                    content = "Provide a comprehensive summary of this deck's overall strategy, key interactions, and most important 'game changer' cards that the opponent should be aware of.",
-                    isDefault = true
+                    name = "Strategic Threats",
+                    content = "Identify the top 3 cards/archetypes this deck struggles against. Suggest specific answers and explain the correct lines of play.",
+                    isDefault = true,
+                    position = 4
+                ),
+                PromptEntity(
+                    name = "Budget Upgrades",
+                    content = "Suggest 10 budget-friendly upgrades (under $5 each) with high impact. Explain why each card fits the strategy.",
+                    isDefault = true,
+                    position = 5
                 )
             )
             promptDao.insertPrompts(defaults)

@@ -103,6 +103,12 @@ class DeckViewModel(
         }
     }
 
+    fun updatePrompts(prompts: List<com.mtgllm.plugin.data.PromptEntity>) {
+        viewModelScope.launch {
+            repository.updatePrompts(prompts)
+        }
+    }
+
     fun deletePrompt(prompt: com.mtgllm.plugin.data.PromptEntity) {
         viewModelScope.launch {
             repository.deletePrompt(prompt)

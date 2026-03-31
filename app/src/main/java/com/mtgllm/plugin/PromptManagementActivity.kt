@@ -11,6 +11,9 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.mtgllm.plugin.data.PromptEntity
 import com.mtgllm.plugin.databinding.ActivityPromptManagementBinding
 
+import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.RecyclerView
+
 class PromptManagementActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityPromptManagementBinding
@@ -50,6 +53,31 @@ class PromptManagementActivity : AppCompatActivity() {
         binding.promptsRecyclerView.layoutManager = LinearLayoutManager(this)
         binding.promptsRecyclerView.adapter = adapter
 
+        val itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+            ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
+        ) {
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean {
+                adapter.onItemMove(viewHolder.adapterPosition, target.adapterPosition)
+                return true
+            }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {}
+
+            override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
+                super.clearView(recyclerView, viewHolder)
+                // Save new order to database
+                val updatedPrompts = adapter.getPrompts().mapIndexed { index, prompt ->
+                    prompt.copy(position = index)
+                }
+                viewModel.updatePrompts(updatedPrompts)
+            }
+        })
+        itemTouchHelper.attachToRecyclerView(binding.promptsRecyclerView)
+
         binding.addPromptFab.setOnClickListener {
             showPromptDialog(null)
         }
@@ -57,7 +85,7 @@ class PromptManagementActivity : AppCompatActivity() {
 
     private fun observeViewModel() {
         viewModel.prompts.observe(this) {
-            adapter.submitList(it)
+            adapter.setPrompts(it)
         }
     }
 
@@ -79,7 +107,8 @@ class PromptManagementActivity : AppCompatActivity() {
                 val content = contentEditText.text.toString().trim()
                 if (name.isNotEmpty() && content.isNotEmpty()) {
                     if (prompt == null) {
-                        viewModel.insertPrompt(PromptEntity(name = name, content = content))
+                        val maxPos = adapter.getPrompts().maxOfOrNull { it.position } ?: -1
+                        viewModel.insertPrompt(PromptEntity(name = name, content = content, position = maxPos + 1))
                     } else {
                         viewModel.updatePrompt(prompt.copy(name = name, content = content))
                     }

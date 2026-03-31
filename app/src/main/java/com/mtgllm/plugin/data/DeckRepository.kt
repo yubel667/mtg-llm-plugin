@@ -40,6 +40,10 @@ class DeckRepository(
         promptDao.updatePrompt(prompt)
     }
 
+    suspend fun updatePrompts(prompts: List<PromptEntity>) = withContext(ioDispatcher) {
+        promptDao.updatePrompts(prompts)
+    }
+
     suspend fun deletePrompt(prompt: PromptEntity) = withContext(ioDispatcher) {
         promptDao.deletePrompt(prompt)
     }

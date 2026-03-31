@@ -3,16 +3,37 @@ package com.mtgllm.plugin
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.mtgllm.plugin.data.PromptEntity
 import com.mtgllm.plugin.databinding.ItemPromptBinding
+import java.util.Collections
 
 class PromptAdapter(
     private val onEdit: (PromptEntity) -> Unit,
     private val onDelete: (PromptEntity) -> Unit
-) : ListAdapter<PromptEntity, PromptAdapter.ViewHolder>(DiffCallback) {
+) : RecyclerView.Adapter<PromptAdapter.ViewHolder>() {
+
+    private var prompts = mutableListOf<PromptEntity>()
+
+    fun setPrompts(newList: List<PromptEntity>) {
+        prompts = newList.toMutableList()
+        notifyDataSetChanged()
+    }
+
+    fun getPrompts(): List<PromptEntity> = prompts
+
+    fun onItemMove(fromPosition: Int, toPosition: Int) {
+        if (fromPosition < toPosition) {
+            for (i in fromPosition until toPosition) {
+                Collections.swap(prompts, i, i + 1)
+            }
+        } else {
+            for (i in fromPosition downTo toPosition + 1) {
+                Collections.swap(prompts, i, i - 1)
+            }
+        }
+        notifyItemMoved(fromPosition, toPosition)
+    }
 
     class ViewHolder(private val binding: ItemPromptBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(prompt: PromptEntity, onEdit: (PromptEntity) -> Unit, onDelete: (PromptEntity) -> Unit) {
@@ -22,10 +43,6 @@ class PromptAdapter(
             
             binding.editButton.setOnClickListener { onEdit(prompt) }
             binding.deleteButton.setOnClickListener { onDelete(prompt) }
-            
-            // Disable delete for default prompts if you want, but user said "add, update or delete a prompt"
-            // and "reset to default" is available, so maybe deleting default is okay?
-            // Usually we keep them. Let's allow deletion for now as requested.
         }
     }
 
@@ -34,15 +51,9 @@ class PromptAdapter(
         return ViewHolder(binding)
     }
 
+    override fun getItemCount(): Int = prompts.size
+
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(getItem(position), onEdit, onDelete)
-    }
-
-    object DiffCallback : DiffUtil.ItemCallback<PromptEntity>() {
-        override fun areItemsTheSame(oldItem: PromptEntity, newItem: PromptEntity): Boolean =
-            oldItem.id == newItem.id
-
-        override fun areContentsTheSame(oldItem: PromptEntity, newItem: PromptEntity): Boolean =
-            oldItem == newItem
+        holder.bind(prompts[position], onEdit, onDelete)
     }
 }
