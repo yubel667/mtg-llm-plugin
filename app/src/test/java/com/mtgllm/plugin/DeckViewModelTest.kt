@@ -45,6 +45,8 @@ class DeckViewModelTest {
         
         every { repository.getCachedGameChangers() } returns emptyList()
         every { repository.getLastGameChangerFetch() } returns 0L
+        every { repository.getAllPromptsFlow() } returns kotlinx.coroutines.flow.flowOf(emptyList())
+        every { repository.getSelectedPromptId() } returns -1
         
         viewModel = DeckViewModel(application, repository, processor)
     }

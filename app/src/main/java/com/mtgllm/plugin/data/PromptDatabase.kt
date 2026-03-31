@@ -24,7 +24,7 @@ abstract class PromptDatabase : RoomDatabase() {
                     PromptDatabase::class.java,
                     "prompt_database"
                 )
-                .fallbackToDestructiveMigration()
+                // NO fallbackToDestructiveMigration() here to protect user prompts
                 .addCallback(object : Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {
                         super.onCreate(db)
@@ -39,6 +39,11 @@ abstract class PromptDatabase : RoomDatabase() {
                 INSTANCE = instance
                 instance
             }
+        }
+
+        fun deleteDatabase(context: Context) {
+            context.deleteDatabase("prompt_database")
+            INSTANCE = null
         }
 
         suspend fun populateDefaultPrompts(promptDao: PromptDao) {

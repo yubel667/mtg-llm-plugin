@@ -87,41 +87,65 @@ class DeckViewModel(
     }
 
     fun selectPrompt(id: Int) {
-        repository.setSelectedPromptId(id)
-        _selectedPromptId.value = id
+        try {
+            repository.setSelectedPromptId(id)
+            _selectedPromptId.value = id
+        } catch (e: Exception) {
+            if (e is IllegalStateException) _databaseError.value = "Prompt Database"
+        }
     }
 
     fun insertPrompt(prompt: com.mtgllm.plugin.data.PromptEntity) {
         viewModelScope.launch {
-            repository.insertPrompt(prompt)
+            try {
+                repository.insertPrompt(prompt)
+            } catch (e: IllegalStateException) {
+                _databaseError.value = "Prompt Database"
+            }
         }
     }
 
     fun updatePrompt(prompt: com.mtgllm.plugin.data.PromptEntity) {
         viewModelScope.launch {
-            repository.updatePrompt(prompt)
+            try {
+                repository.updatePrompt(prompt)
+            } catch (e: IllegalStateException) {
+                _databaseError.value = "Prompt Database"
+            }
         }
     }
 
     fun updatePrompts(prompts: List<com.mtgllm.plugin.data.PromptEntity>) {
         viewModelScope.launch {
-            repository.updatePrompts(prompts)
+            try {
+                repository.updatePrompts(prompts)
+            } catch (e: IllegalStateException) {
+                _databaseError.value = "Prompt Database"
+            }
         }
     }
 
     fun deletePrompt(prompt: com.mtgllm.plugin.data.PromptEntity) {
         viewModelScope.launch {
-            repository.deletePrompt(prompt)
-            if (_selectedPromptId.value == prompt.id) {
-                selectPrompt(-1)
+            try {
+                repository.deletePrompt(prompt)
+                if (_selectedPromptId.value == prompt.id) {
+                    selectPrompt(-1)
+                }
+            } catch (e: IllegalStateException) {
+                _databaseError.value = "Prompt Database"
             }
         }
     }
 
     fun resetPromptsToDefault() {
         viewModelScope.launch {
-            repository.resetPromptsToDefault()
-            selectPrompt(-1)
+            try {
+                repository.resetPromptsToDefault()
+                selectPrompt(-1)
+            } catch (e: IllegalStateException) {
+                _databaseError.value = "Prompt Database"
+            }
         }
     }
 
@@ -150,10 +174,26 @@ class DeckViewModel(
         }
     }
 
+    private val _databaseError = MutableLiveData<String?>(null)
+    val databaseError: LiveData<String?> = _databaseError
+
+    fun resetDatabases() {
+        com.mtgllm.plugin.data.HistoryDatabase.deleteDatabase(getApplication())
+        com.mtgllm.plugin.data.PromptDatabase.deleteDatabase(getApplication())
+        _databaseError.value = null
+        // Force reload by creating new repository in Factory would be hard, 
+        // but since they are singletons, we just need the app to restart or re-fetch.
+        // Actually, the easiest is to just tell the user to restart the app.
+    }
+
     fun loadHistory(query: String = "") {
         viewModelScope.launch {
-            val allRecords = repository.getHistory()
-            _history.value = if (query.isEmpty()) allRecords else allRecords.filter { it.name.contains(query, ignoreCase = true) }
+            try {
+                val allRecords = repository.getHistory()
+                _history.value = if (query.isEmpty()) allRecords else allRecords.filter { it.name.contains(query, ignoreCase = true) }
+            } catch (e: IllegalStateException) {
+                _databaseError.value = "History Database"
+            }
         }
     }
 

@@ -20,11 +20,16 @@ abstract class HistoryDatabase : RoomDatabase() {
                     HistoryDatabase::class.java,
                     "history_database"
                 )
-                .fallbackToDestructiveMigration()
+                // NO fallbackToDestructiveMigration() here to protect user history
                 .build()
                 INSTANCE = instance
                 instance
             }
+        }
+        
+        fun deleteDatabase(context: Context) {
+            context.deleteDatabase("history_database")
+            INSTANCE = null
         }
     }
 }

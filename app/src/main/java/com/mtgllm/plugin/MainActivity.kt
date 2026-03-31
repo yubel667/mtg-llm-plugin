@@ -322,6 +322,28 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupObservers() {
+        viewModel.databaseError.observe(this) { errorDb ->
+            errorDb?.let {
+                MaterialAlertDialogBuilder(this)
+                    .setTitle("Database Schema Conflict")
+                    .setMessage("A database update ($it) is available, but we couldn't migrate your existing data. Would you like to wipe and reset to the new version? This will delete your current history and custom prompts.")
+                    .setCancelable(false)
+                    .setPositiveButton("Wipe & Reset") { _, _ ->
+                        viewModel.resetDatabases()
+                        // Restart app to recreate databases
+                        val intent = packageManager.getLaunchIntentForPackage(packageName)
+                        intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                        intent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        startActivity(intent)
+                        finish()
+                    }
+                    .setNegativeButton("Close App") { _, _ ->
+                        finish()
+                    }
+                    .show()
+            }
+        }
+
         viewModel.prompts.observe(this) { prompts ->
             val promptNames = mutableListOf("None")
             promptNames.addAll(prompts.map { it.name })
