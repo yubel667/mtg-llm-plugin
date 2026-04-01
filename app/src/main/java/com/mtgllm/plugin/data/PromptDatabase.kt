@@ -50,7 +50,7 @@ abstract class PromptDatabase : RoomDatabase() {
             val defaults = listOf(
                 PromptEntity(
                     name = "Bracket Analysis",
-                    content = "Perform an official Commander Bracket Analysis (1-5). Identify all 'Game Changer' cards (GC) and determine the bracket: Bracket 1 (Exhibition): 0 GC, no 2-card combos, no extra turns. Bracket 2 (Core): 0 GC, Precon-level. Bracket 3 (Upgraded): 1-3 GC, high synergy, no early combos. Bracket 4 (Optimized): 4+ GC, explosive starts, efficient combos. Bracket 5 (cEDH): Max power, tournament meta.",
+                    content = "Perform an official Commander Bracket Analysis (1-5). Identify all 'Game Changer' cards, count them, and determine the bracket based on the 'Rule of 3' (0 GC = Bracket 1/2, 0-3 GC = Bracket 3, 4+ GC = Bracket 4 or 5). Check for 2-card early game combos and fast mana. Show result at the beginning followed by details. Brackets: 1 (Jank), 2 (Precon), 3 (Optimized Precon), 4 (High Power - win at LGS at all cost), 5 (cEDH - win tournament). Compare 'rule' bracket vs 'real' bracket if they differ. Official ruling specifically says good landbase does not increase bucket.",
                     isDefault = true,
                     position = 0
                 ),
