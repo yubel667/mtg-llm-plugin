@@ -175,6 +175,23 @@ class DeckRepository(
 
     suspend fun fetchMtgTop8Deck(url: String): DeckInfo = withContext(ioDispatcher) {
         val deckId = Regex("""d=(\d+)""").find(url)?.groupValues?.get(1)
+        var deckName = url
+        
+        try {
+            val doc = Jsoup.connect(url)
+                .timeout(10000)
+                .userAgent("MTG-LLM-Plugin/1.0")
+                .get()
+            
+            val title = doc.title()
+            if (title.isNotEmpty()) {
+                // Example: "The Fourteenth Doctor + K-9, Mark I - Alex Lloyd @ mtgtop8.com"
+                deckName = title.substringBefore(" @ mtgtop8.com").trim()
+            }
+        } catch (e: Exception) {
+            Log.e("DeckRepository", "Error fetching MTGTop8 page title", e)
+        }
+
         val bodyText = if (deckId != null) {
             Jsoup.connect("https://www.mtgtop8.com/mtgo?d=$deckId")
                 .timeout(10000)
@@ -183,13 +200,14 @@ class DeckRepository(
                 .execute()
                 .body()
         } else {
-            Jsoup.connect(url)
+            // Fallback to text parsing if no deckId
+            val doc = Jsoup.connect(url)
                 .timeout(10000)
                 .userAgent("MTG-LLM-Plugin/1.0")
                 .get()
-                .body().text()
+            doc.body().text()
         }
-        DeckParser.parse(bodyText, url)
+        DeckParser.parse(bodyText, deckName)
     }
 
     suspend fun fetchGameChangers(): List<String> = withContext(ioDispatcher) {
