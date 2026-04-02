@@ -5,6 +5,8 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -24,13 +26,12 @@ abstract class PromptDatabase : RoomDatabase() {
                     PromptDatabase::class.java,
                     "prompt_database"
                 )
-                // NO fallbackToDestructiveMigration() here to protect user prompts
                 .addCallback(object : Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {
                         super.onCreate(db)
                         CoroutineScope(Dispatchers.IO).launch {
                             INSTANCE?.let { database ->
-                                populateDefaultPrompts(database.promptDao())
+                                populateDefaultPrompts(context, database.promptDao())
                             }
                         }
                     }
@@ -46,58 +47,18 @@ abstract class PromptDatabase : RoomDatabase() {
             INSTANCE = null
         }
 
-        suspend fun populateDefaultPrompts(promptDao: PromptDao) {
-            val defaults = listOf(
-                PromptEntity(
-                    name = "Bracket Analysis",
-                    content = "Perform an official Commander Bracket Analysis (1-5). Identify all 'Game Changer' cards, count them, and determine the bracket based on the 'Rule of 3' (0 GC = Bracket 1/2, 0-3 GC = Bracket 3, 4+ GC = Bracket 4 or 5). Check for 2-card early game combos and fast mana. Show result at the beginning followed by details. Brackets: 1 (Jank), 2 (Precon), 3 (Optimized Precon), 4 (High Power - win at LGS at all cost), 5 (cEDH - win tournament). Compare 'rule' bracket vs 'real' bracket if they differ. Official ruling specifically says good landbase does not increase bucket.",
-                    isDefault = true,
-                    position = 0
-                ),
-                PromptEntity(
-                    name = "EDH Power Level",
-                    content = "Estimate the deck's power level (1-10). Evaluate mana curve, synergy with commander, and consistency. Suggest 5 specific card swaps to improve performance.",
-                    isDefault = true,
-                    position = 1
-                ),
-                PromptEntity(
-                    name = "Deck Summary",
-                    content = "Provide a concise summary of the deck's strategy, primary win conditions, key card interactions, and most impactful cards.",
-                    isDefault = true,
-                    position = 2
-                ),
-                PromptEntity(
-                    name = "Competitive Meta",
-                    content = "Analyze for the current competitive meta. Identify wincons, key vulnerabilities, and suggest sideboard or mainboard adjustments against top-tier decks.",
-                    isDefault = true,
-                    position = 3
-                ),
-                PromptEntity(
-                    name = "Strategic Threats",
-                    content = "Identify the top 3 archetypes or cards this deck struggles against. Suggest specific answers and explain the optimal lines of play to counter them.",
-                    isDefault = true,
-                    position = 4
-                ),
-                PromptEntity(
-                    name = "Budget Upgrades",
-                    content = "Suggest 10 budget-friendly upgrades (under $5 each). Explain how each card improves the deck's synergy or power.",
-                    isDefault = true,
-                    position = 5
-                ),
-                PromptEntity(
-                    name = "Salt Analysis",
-                    content = "Analyze this deck on its salt level: how often, and how strong it would make people salty? why? Common salt factors include: combo, mass land denial, excessive boardwipe, too much hard stax, chaining extra turns, and group slug.",
-                    isDefault = true,
-                    position = 6
-                ),
-                PromptEntity(
-                    name = "Combo Analysis",
-                    content = "Identify all infinite combos in this deck (not just synergies). For each, explain: 1. How it works (mechanics/steps). 2. Its impact on the game (wincon, infinite mana, etc.). 3. Its consistency (how many pieces, tutors available). 4. Whether it's the primary win condition or a sideline strategy.",
-                    isDefault = true,
-                    position = 7
-                )
-            )
-            promptDao.insertPrompts(defaults)
+        suspend fun populateDefaultPrompts(context: Context, promptDao: PromptDao) {
+            try {
+                val jsonString = context.assets.open("prompts.json").bufferedReader().use { it.readText() }
+                val listType = object : TypeToken<List<PromptEntity>>() {}.type
+                val defaults: List<PromptEntity> = Gson().fromJson(jsonString, listType)
+                
+                // Ensure isDefault is set to true for these loaded prompts
+                val finalDefaults = defaults.map { it.copy(isDefault = true) }
+                promptDao.insertPrompts(finalDefaults)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 }

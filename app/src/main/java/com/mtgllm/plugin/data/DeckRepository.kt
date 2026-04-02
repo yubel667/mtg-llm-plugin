@@ -39,7 +39,7 @@ class DeckRepository(
 
     private suspend fun checkAndPopulateDefaults() = withContext(ioDispatcher) {
         if (promptDao.getAllPrompts().isEmpty()) {
-            PromptDatabase.populateDefaultPrompts(promptDao)
+            PromptDatabase.populateDefaultPrompts(context, promptDao)
         }
     }
 
@@ -61,7 +61,7 @@ class DeckRepository(
 
     suspend fun resetPromptsToDefault() = withContext(ioDispatcher) {
         promptDao.deleteAll()
-        PromptDatabase.populateDefaultPrompts(promptDao)
+        PromptDatabase.populateDefaultPrompts(context, promptDao)
     }
 
     suspend fun getPromptById(id: Int) = withContext(ioDispatcher) {
