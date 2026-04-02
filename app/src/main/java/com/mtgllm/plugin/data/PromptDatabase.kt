@@ -83,6 +83,18 @@ abstract class PromptDatabase : RoomDatabase() {
                     content = "Suggest 10 budget-friendly upgrades (under $5 each). Explain how each card improves the deck's synergy or power.",
                     isDefault = true,
                     position = 5
+                ),
+                PromptEntity(
+                    name = "Salt Analysis",
+                    content = "Analyze this deck on its salt level: how often, and how strong it would make people salty? why? Common salt factors include: combo, mass land denial, excessive boardwipe, too much hard stax, chaining extra turns, and group slug.",
+                    isDefault = true,
+                    position = 6
+                ),
+                PromptEntity(
+                    name = "Combo Analysis",
+                    content = "Identify all infinite combos in this deck (not just synergies). For each, explain: 1. How it works (mechanics/steps). 2. Its impact on the game (wincon, infinite mana, etc.). 3. Its consistency (how many pieces, tutors available). 4. Whether it's the primary win condition or a sideline strategy.",
+                    isDefault = true,
+                    position = 7
                 )
             )
             promptDao.insertPrompts(defaults)
