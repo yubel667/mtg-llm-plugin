@@ -23,7 +23,7 @@ class DeckProcessor(
         onProgress: (Int, String) -> Unit
     ): ProcessingResult {
         onProgress(0, "Parsing deck...")
-        val deckInfo = DeckParser.parse(input, customName)
+        val deckInfo = DeckParser.parse(input, customName, CommanderCardExceptions.load(application))
         if (deckInfo.cards.isEmpty()) {
             return ProcessingResult.Error("No valid cards found in the input.")
         }

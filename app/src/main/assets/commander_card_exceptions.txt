@@ -1,0 +1,35 @@
+# Card names containing "commander" that must be parsed as cards, not section markers.
+# Keep one canonical English card name per line.
+# Source query: https://scryfall.com/search?q=name%3Acommander&unique=cards
+Ambush Commander
+Ant-Man, Colony Commander
+Benalish Commander
+Cao Ren, Wei Commander
+Commander Eesha
+Commander Greven il-Vec
+Commander Liara Portyr
+Commander Mustard
+Commander's Authority
+Commander's Insight
+Commander's Insignia
+Commander Sofia Daguerre
+Commander's Plate
+Commander's Sphere
+Company Commander
+Coralhelm Commander
+Faramir, Field Commander
+Goldnight Commander
+Hakoda, Selfless Commander
+Inspiring Commander
+Ramosian Commander
+Risona, Asari Commander
+Rushblade Commander
+Siege-Gang Commander
+Spawn-Gang Commander
+Squad Commander
+Surgeon General Commander
+Sycorax Commander
+Triceraton Commander
+Wintermoor Commander
+Zhalfirin Commander
+Zhou Yu, Chief Commander

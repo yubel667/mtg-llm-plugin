@@ -250,7 +250,8 @@ class MainActivity : AppCompatActivity() {
         binding.statusContainer.visibility = View.VISIBLE
         binding.statusTextView.text = "Analyzing list..."
         
-        val deckInfo = com.mtgllm.plugin.utils.DeckParser.parse(text, defaultName)
+        val commanderCardExceptions = com.mtgllm.plugin.utils.CommanderCardExceptions.load(this)
+        val deckInfo = com.mtgllm.plugin.utils.DeckParser.parse(text, defaultName, commanderCardExceptions)
         showConfig(deckInfo)
     }
 

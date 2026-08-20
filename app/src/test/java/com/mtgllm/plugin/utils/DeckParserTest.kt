@@ -3,8 +3,19 @@ package com.mtgllm.plugin.utils
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 class DeckParserTest {
+
+    private val commanderCardExceptions by lazy {
+        CommanderCardExceptions.parse(
+            File("src/main/assets/commander_card_exceptions.txt").inputStream()
+        )
+    }
+
+    private fun parseDeck(input: String, defaultName: String? = null): DeckInfo {
+        return DeckParser.parse(input, defaultName, commanderCardExceptions)
+    }
 
     @Test
     fun `parse simple decklist text`() {
@@ -14,7 +25,7 @@ class DeckParserTest {
             1 Arcane Signet (CLB) 298
         """.trimIndent()
 
-        val result = DeckParser.parse(input)
+        val result = parseDeck(input)
 
         assertEquals("Sol Ring", result.name)
         assertEquals(3, result.cards.size)
@@ -32,7 +43,7 @@ class DeckParserTest {
             1 Trial /// Error
         """.trimIndent()
 
-        val result = DeckParser.parse(input)
+        val result = parseDeck(input)
         
         assertEquals("Delver of Secrets", result.cards[0].name)
         assertEquals("Bala Ged Recovery", result.cards[1].name)
@@ -52,7 +63,7 @@ class DeckParserTest {
             1 Arcane Signet
         """.trimIndent()
 
-        val result = DeckParser.parse(input)
+        val result = parseDeck(input)
         assertEquals(3, result.cards.size)
         assertEquals(CardSection.MAIN, result.cards[0].section)
         assertEquals(CardSection.SIDEBOARD, result.cards[1].section)
@@ -90,7 +101,7 @@ class DeckParserTest {
             1 Pyroblast
         """.trimIndent()
 
-        val result = DeckParser.parse(input, "Dragons")
+        val result = parseDeck(input, "Dragons")
         
         assertEquals("Dragons", result.name)
         assertTrue(result.cards.any { it.name == "The Ur-Dragon" && it.section == CardSection.MAIN })
@@ -106,7 +117,7 @@ class DeckParserTest {
             1 Marneus Calgar
         """.trimIndent()
 
-        val result = DeckParser.parse(input, "Marneus Calgar")
+        val result = parseDeck(input, "Marneus Calgar")
         
         assertEquals("Marneus Calgar", result.name)
         assertEquals(3, result.cards.size)
@@ -134,7 +145,7 @@ class DeckParserTest {
             1 Chrome Mox
         """.trimIndent()
 
-        val result = DeckParser.parse(input)
+        val result = parseDeck(input)
         
         assertEquals(CardSection.COMMANDER, result.cards.find { it.name == "Eluge, the Shoreless Sea" }?.section)
         assertEquals(CardSection.MAIN, result.cards.find { it.name == "Baral, Chief of Compliance" }?.section)
@@ -142,6 +153,44 @@ class DeckParserTest {
         assertEquals(CardSection.MAIN, result.cards.find { it.name == "Sol Ring" }?.section)
         assertEquals(CardSection.SIDEBOARD, result.cards.find { it.name == "Pulse of the Grid" }?.section)
         assertEquals(CardSection.MAYBOARD, result.cards.find { it.name == "Chrome Mox" }?.section)
+    }
+
+    @Test
+    fun `parse commander card names as cards instead of section markers`() {
+        val input = buildString {
+            appendLine("Commanders:")
+            appendLine("1 Eluge, the Shoreless Sea")
+            appendLine()
+            appendLine("Mainboard:")
+            commanderCardExceptions.sorted().forEach { name ->
+                if (name == "Commander's Sphere") {
+                    appendLine("1x $name (CMM) 396")
+                } else {
+                    appendLine("1 $name")
+                }
+            }
+            appendLine("1 Sol Ring")
+        }
+
+        val result = parseDeck(input)
+
+        assertEquals(commanderCardExceptions.size + 2, result.cards.size)
+        assertEquals(CardSection.COMMANDER, result.cards.first { it.name == "Eluge, the Shoreless Sea" }.section)
+
+        val mainboardNames = commanderCardExceptions + "Sol Ring"
+        mainboardNames.forEach { name ->
+            assertEquals(CardSection.MAIN, result.cards.first { it.name == name }.section)
+        }
+    }
+
+    @Test
+    fun `commander card exception asset contains valid unique card names`() {
+        val exceptions = commanderCardExceptions
+
+        assertTrue("Commander's Plate" in exceptions)
+        assertTrue("Commander's Sphere" in exceptions)
+        assertTrue(exceptions.all { it.contains("commander", ignoreCase = true) })
+        assertEquals(exceptions.size, exceptions.map { it.lowercase() }.toSet().size)
     }
 
     @Test
@@ -154,7 +203,7 @@ class DeckParserTest {
             
         """.trimIndent()
 
-        val result = DeckParser.parse(input)
+        val result = parseDeck(input)
         assertEquals(2, result.cards.size)
     }
 
@@ -167,7 +216,7 @@ class DeckParserTest {
             20 Mountain (UST) 215
         """.trimIndent()
 
-        val result = DeckParser.parse(input)
+        val result = parseDeck(input)
         
         assertEquals(3, result.cards.size)
         assertEquals("Lightning Bolt", result.cards[0].name)
@@ -186,7 +235,7 @@ class DeckParserTest {
             1 Théoden, King of Rohan
         """.trimIndent()
 
-        val result = DeckParser.parse(input)
+        val result = parseDeck(input)
         
         assertEquals(4, result.cards.size)
         assertEquals("Lim-Dûl's Vault", result.cards[0].name)
@@ -211,7 +260,7 @@ class DeckParserTest {
             1 Sol Ring
         """.trimIndent()
 
-        val result = DeckParser.parse(input)
+        val result = parseDeck(input)
         
         assertEquals(CardSection.COMMANDER, result.cards.find { it.name == "Urza, Lord High Artificer" }?.section)
         assertEquals(CardSection.MAIN, result.cards.find { it.name == "Island" }?.section)
@@ -227,7 +276,7 @@ class DeckParserTest {
             Island
         """.trimIndent()
 
-        val result = DeckParser.parse(input)
+        val result = parseDeck(input)
         
         assertEquals(3, result.cards.size)
         assertEquals("Sol Ring", result.cards[0].name)
@@ -243,7 +292,7 @@ class DeckParserTest {
             1 Arcane Signet *foil*
         """.trimIndent()
 
-        val result = DeckParser.parse(input)
+        val result = parseDeck(input)
         
         assertEquals(3, result.cards.size)
         assertEquals("Sol Ring", result.cards[0].name)
@@ -253,7 +302,7 @@ class DeckParserTest {
 
     @Test
     fun `parse empty input`() {
-        val result = DeckParser.parse("")
+        val result = parseDeck("")
         assertEquals(0, result.cards.size)
         assertEquals("New Deck", result.name)
     }
@@ -261,7 +310,7 @@ class DeckParserTest {
     @Test
     fun `parse random text with no cards`() {
         val input = "!@# %^&* ()"
-        val result = DeckParser.parse(input)
+        val result = parseDeck(input)
         assertEquals(0, result.cards.size)
     }
 }

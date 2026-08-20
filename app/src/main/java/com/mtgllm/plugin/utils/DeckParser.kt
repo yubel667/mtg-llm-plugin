@@ -13,8 +13,12 @@ object DeckParser {
     // Supports trailing comments like # or *
     private val LINE_PATTERN = Regex("""^(?:(\d+)[xX]?\s+)?([a-zA-Z0-9"].+?)(?:\s+\([A-Z0-9]{3,4}\)(?:\s+\d+)?)?(?:\s*[#*].*)?$""")
 
-    fun parse(input: String, defaultName: String? = null): DeckInfo {
-        return parseText(input, defaultName)
+    fun parse(
+        input: String,
+        defaultName: String? = null,
+        commanderCardExceptions: Set<String>
+    ): DeckInfo {
+        return parseText(input, defaultName, commanderCardExceptions)
     }
 
     fun parseMoxfieldResponse(response: com.mtgllm.plugin.api.MoxfieldDeckResponse): DeckInfo {
@@ -63,9 +67,15 @@ object DeckParser {
         return DeckInfo(defaultName, cards, rawText)
     }
 
-    private fun parseText(text: String, deckName: String? = null): DeckInfo {
+    private fun parseText(
+        text: String,
+        deckName: String? = null,
+        commanderCardExceptions: Set<String>
+    ): DeckInfo {
         val cards = mutableListOf<ParsedCard>()
         var currentSection = CardSection.MAIN
+        val normalizedCommanderCardExceptions = commanderCardExceptions
+            .mapTo(mutableSetOf()) { it.trim().lowercase() }
         
         text.lines().forEach { line ->
             val trimmed = line.trim()
@@ -77,7 +87,10 @@ object DeckParser {
             val isHeader = when {
                 upper.contains("MAYBEBOARD") || upper.contains("MAYBOARD") || upper.contains("CONSIDERING") -> { currentSection = CardSection.MAYBOARD; true }
                 upper.contains("SIDEBOARD") -> { currentSection = CardSection.SIDEBOARD; true }
-                upper.contains("COMMANDER") -> { currentSection = CardSection.COMMANDER; true }
+                upper.contains("COMMANDER") && !isCommanderCardLine(trimmed, normalizedCommanderCardExceptions) -> {
+                    currentSection = CardSection.COMMANDER
+                    true
+                }
                 trimmed.startsWith("[") && trimmed.endsWith("]") -> { currentSection = CardSection.MAIN; true }
                 trimmed.startsWith("---") && trimmed.endsWith("---") -> { true }
                 trimmed.endsWith(":") -> {
@@ -121,5 +134,11 @@ object DeckParser {
                          ?: cards.firstOrNull { it.section == CardSection.MAIN }?.name 
                          ?: "New Deck"
         return DeckInfo(finalName, cards, text)
+    }
+
+    private fun isCommanderCardLine(line: String, normalizedExceptions: Set<String>): Boolean {
+        val lineMatch = LINE_PATTERN.find(line) ?: return false
+        val cardName = lineMatch.groupValues[2].trim().lowercase()
+        return cardName in normalizedExceptions
     }
 }

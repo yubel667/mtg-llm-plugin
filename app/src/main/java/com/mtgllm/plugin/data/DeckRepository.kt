@@ -6,6 +6,7 @@ import com.mtgllm.plugin.api.CardIdentifier
 import com.mtgllm.plugin.api.MoxfieldService
 import com.mtgllm.plugin.api.ScryfallCollectionRequest
 import com.mtgllm.plugin.api.ScryfallService
+import com.mtgllm.plugin.utils.CommanderCardExceptions
 import com.mtgllm.plugin.utils.DeckInfo
 import com.mtgllm.plugin.utils.DeckParser
 import kotlinx.coroutines.CoroutineDispatcher
@@ -207,7 +208,7 @@ class DeckRepository(
                 .get()
             doc.body().text()
         }
-        DeckParser.parse(bodyText, deckName)
+        DeckParser.parse(bodyText, deckName, CommanderCardExceptions.load(context))
     }
 
     suspend fun fetchGameChangers(): List<String> = withContext(ioDispatcher) {
