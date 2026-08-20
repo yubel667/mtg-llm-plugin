@@ -2,41 +2,61 @@
   {
     "name": "Bracket Analysis",
     "content": "Perform an official Commander Bracket Analysis (1-5). Identify all 'Game Changer' cards, count them, and determine the bracket based on the 'Rule of 3' (0 GC = Bracket 1/2, 0-3 GC = Bracket 3, 4+ GC = Bracket 4 or 5). Check for 2-card early game combos and fast mana. Show result at the beginning followed by details. Brackets: 1 (Jank), 2 (Precon), 3 (Optimized Precon), 4 (High Power - win at LGS at all cost), 5 (cEDH - win tournament). Compare 'rule' bracket vs 'real' bracket if they differ.",
-    "position": 0
+    "position": 0,
+    "introducedInVersion": 1
   },
   {
     "name": "EDH Power Level",
     "content": "Estimate the deck's power level (1-10). Evaluate mana curve, synergy with commander, and consistency. Suggest 5 specific card swaps to improve performance.",
-    "position": 1
+    "position": 1,
+    "introducedInVersion": 1
   },
   {
     "name": "Deck Summary",
     "content": "Provide a concise summary of the deck's strategy, primary win conditions, key card interactions, and most impactful cards.",
-    "position": 2
+    "position": 2,
+    "introducedInVersion": 1
   },
   {
     "name": "Competitive Meta",
     "content": "Analyze for the current competitive meta. Identify wincons, key vulnerabilities, and suggest sideboard or mainboard adjustments against top-tier decks.",
-    "position": 3
+    "position": 3,
+    "introducedInVersion": 1
   },
   {
     "name": "Strategic Threats",
     "content": "Identify the top 3 archetypes or cards this deck struggles against. Suggest specific answers and explain the optimal lines of play to counter them.",
-    "position": 4
+    "position": 4,
+    "introducedInVersion": 1
   },
   {
     "name": "Budget Upgrades",
     "content": "Suggest 10 budget-friendly upgrades (under $5 each). Explain how each card improves the deck's synergy or power.",
-    "position": 5
+    "position": 5,
+    "introducedInVersion": 1
   },
   {
     "name": "Salt Analysis",
     "content": "Analyze this deck on its salt level: how often, and how strong it would make people salty? why? Common salt factors include: combo, mass land denial, excessive boardwipe, too much hard stax, chaining extra turns, and group slug.",
-    "position": 6
+    "position": 6,
+    "introducedInVersion": 1
   },
   {
     "name": "Combo Analysis",
     "content": "Identify all infinite combos in this deck (not just synergies). For each, explain: 1. How it works (mechanics/steps). 2. Its impact on the game (wincon, infinite mana, etc.). 3. Its consistency (how many pieces, tutors available). 4. Whether it's the primary win condition or a sideline strategy.",
-    "position": 7
+    "position": 7,
+    "introducedInVersion": 1
+  },
+  {
+    "name": "Mana Curve Analysis",
+    "content": "Analyze this deck's mana curve and casting requirements. Break down nonland cards by mana value and card type, then evaluate land count, colored mana sources, ramp, cost reduction, and how reliably key plays can be made on curve. Identify congested mana values, curve gaps, and cards that are difficult to cast or insufficiently supported. Consider the commander, primary game plan, interaction density, combos, and synergy packages rather than judging cards only in isolation. Recommend specific cuts, additions, or mana-base and ramp changes, and explain how each change improves the curve without weakening important synergies or combo density.",
+    "position": 8,
+    "introducedInVersion": 2
+  },
+  {
+    "name": "Sideboard Replacement Analysis",
+    "content": "In this EDH deck, I plan to move cards from the sideboard into the mainboard. For each sideboard card, first determine whether it is a suitable inclusion. If it is, identify one or more mainboard cards that could be replaced and explain each proposed swap. Do not consider only individual card strength: account for synergy and redundancy density. If an effect is scarce, replacing another card with the same effect may be worse than cutting elsewhere. Also evaluate the deck holistically, including its mana curve, color requirements, primary game plan, interaction, combos, combo-piece density, and synergy with the commander. Rank the recommended swaps and clearly identify sideboard cards that should remain outside the mainboard.",
+    "position": 9,
+    "introducedInVersion": 2
   }
 ]
